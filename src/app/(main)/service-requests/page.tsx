@@ -1,109 +1,132 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
-import { Search } from "lucide-react";
-import { ServiceRequest, StatusType, PriorityType } from "@/types/serviceRequest";
+import { Search, Loader2 } from "lucide-react";
+import { ServiceRequest, StatusType, PriorityType, IServiceRequest } from "@/types/serviceRequest";
 import ServiceRequestHeader from "@/components/service-requests/ServiceRequestHeader";
 import ServiceRequestStats from "@/components/service-requests/ServiceRequestStats";
 import ServiceRequestTable from "@/components/service-requests/ServiceRequestTable";
 import CreateServiceRequestModal from "@/components/service-requests/CreateServiceRequestModal";
-import {
-  getStoredRequests,
-  subscribeToRequests,
-  createServiceRequest,
-  ServiceRequestItem,
-} from "@/types/serviceRequestStore";
+import { useGetAllServiceRequestsQuery } from "@/features/serviceRequest/serviceRequestApi";
 
 export default function ServiceRequestsPage() {
   const router = useRouter();
-  const [storeRequests, setStoreRequests] = useState<ServiceRequestItem[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  useEffect(() => {
-    setStoreRequests(getStoredRequests());
-    const unsubscribe = subscribeToRequests((updated) => {
-      setStoreRequests(updated);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Map ServiceRequestItem from store to legacy ServiceRequest format for rendering
-  const mappedRequests: ServiceRequest[] = storeRequests.map((r) => ({
-    id: r.id,
-    title: r.issue,
-    property: r.property,
-    address: r.address,
-    priority: (r.priority === "Critical" ? "Urgent" : r.priority) as PriorityType,
-    status: (r.status === "Reassignment Requested" ? "Pending" : r.status) as StatusType,
-    stage: r.status === "Completed" ? 4 : r.status === "In Progress" || r.status === "Accepted" ? 3 : r.status === "Assigned" ? 2 : 1,
-    stageText: r.status === "Completed" ? "Completed" : r.status === "In Progress" || r.status === "Accepted" ? "In Progress" : r.status === "Assigned" ? "Assigned" : "Pending Approval",
-    contractor: r.contractor,
-    contractorPhone: r.contractorPhone || "+1 (555) 000-0000",
-    createdDate: r.date,
-    isOccupied: true,
-    tenantName: r.tenantName || "Nichole",
-    tenantPhone: r.tenantPhone || "+1 (555) 255-2552",
-  }));
-
-  // Counts
-  const pendingCount = mappedRequests.filter((r) => r.status === "Pending").length;
-  const assignedCount = mappedRequests.filter((r) => r.status === "Assigned").length;
-  const inProgressCount = mappedRequests.filter((r) => r.status === "In Progress" || (r.status as string) === "Accepted").length;
-  const completedCount = mappedRequests.filter((r) => r.status === "Completed").length;
-  const cancelledCount = mappedRequests.filter((r) => r.status === "Cancelled").length;
-
-  // Filtered Requests
-  const filteredRequests = mappedRequests.filter((r) => {
-    const query = searchTerm.toLowerCase();
-    return (
-      r.id.toLowerCase().includes(query) ||
-      r.title.toLowerCase().includes(query) ||
-      r.property.toLowerCase().includes(query) ||
-      r.contractor.toLowerCase().includes(query)
-    );
+  // Fetch live service requests from backend
+  const {
+    data: serviceRequestsRes,
+    isLoading: isRequestsLoading,
+    refetch,
+  } = useGetAllServiceRequestsQuery({
+    searchTerm: searchTerm.trim() || undefined,
   });
 
-  // Handle status update
-  const handleStatusChange = (
-    id: string,
-    newStatus: StatusType,
-    newStage: number,
-    stageText: string
-  ) => {
-    toast.success(`Request ${id} updated to ${newStatus} (Stage ${newStage}: ${stageText})`);
-  };
+  const rawRequests: IServiceRequest[] = useMemo(() => {
+    return serviceRequestsRes?.data?.requests || [];
+  }, [serviceRequestsRes]);
 
-  // Submit Modal - Creates a Service Request that routes to Super Admin
-  const handleCreateSubmit = (newReq: ServiceRequest) => {
-    const created = createServiceRequest({
-      propertyManager: "Alex Johnson (Property Manager)",
-      property: newReq.property,
-      address: newReq.address,
-      issue: newReq.title,
-      type: "Plumbing",
-      priority: (newReq.priority === "Urgent" ? "Critical" : newReq.priority) as "Critical" | "High" | "Medium" | "Low",
-      tenantName: newReq.tenantName,
-      tenantPhone: newReq.tenantPhone,
-      notes: "Newly created service request from Property Manager.",
+  // Map backend IServiceRequest to ServiceRequest interface for the table
+  const mappedRequests: ServiceRequest[] = useMemo(() => {
+    return rawRequests.map((r) => {
+      const propObj = typeof r.property === "object" ? r.property : null;
+      const providerObj = typeof r.assignedProvider === "object" ? r.assignedProvider : null;
+      const providerName = providerObj
+        ? `${providerObj.firstName || ""} ${providerObj.lastName || ""}`.trim() ||
+          providerObj.userName ||
+          "Assigned Provider"
+        : "Unassigned";
+
+      const createdDateStr = r.createdAt
+        ? new Date(r.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "Recent";
+
+      const scheduledDateStr = r.eta
+        ? new Date(r.eta).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : createdDateStr;
+
+      return {
+        _id: r._id,
+        id: r.requestNo || r._id.slice(-6).toUpperCase(),
+        title: r.issueTitle,
+        property: propObj?.name || propObj?.title || "Property",
+        address: propObj?.address || "",
+        priority: (r.priority || "Medium") as PriorityType,
+        status: (r.status || "Pending") as StatusType,
+        stage:
+          r.status === "Completed"
+            ? 4
+            : r.status === "In Progress" || r.status === "Accepted"
+            ? 3
+            : r.status === "Assigned"
+            ? 2
+            : 1,
+        stageText: r.status || "Pending",
+        contractor: providerName,
+        contractorPhone: providerObj?.phone || providerObj?.contactNumber,
+        createdDate: createdDateStr,
+        scheduledDate: scheduledDateStr,
+        isOccupied: r.isOccupied,
+        tenantName: r.tenantName,
+        tenantPhone: r.tenantPhone,
+        raw: r,
+      };
     });
+  }, [rawRequests]);
 
-    toast.success(`New Service Request ${created.id} submitted! Sent to Super Admin for review.`);
-    setIsModalOpen(false);
-  };
+  // Counts for Stats Cards
+  const pendingCount = useMemo(
+    () => rawRequests.filter((r) => r.status === "Pending").length,
+    [rawRequests]
+  );
+  const assignedCount = useMemo(
+    () => rawRequests.filter((r) => r.status === "Assigned").length,
+    [rawRequests]
+  );
+  const inProgressCount = useMemo(
+    () =>
+      rawRequests.filter(
+        (r) => r.status === "In Progress" || r.status === "Accepted"
+      ).length,
+    [rawRequests]
+  );
+  const completedCount = useMemo(
+    () => rawRequests.filter((r) => r.status === "Completed").length,
+    [rawRequests]
+  );
+  const cancelledCount = useMemo(
+    () =>
+      rawRequests.filter(
+        (r) => r.status === "Cancelled" || r.status === "Rejected"
+      ).length,
+    [rawRequests]
+  );
 
-  // Navigate to Track
-  const navigateToTrack = (id: string) => {
-    router.push(`/service-requests/track?id=${id}`);
+  // Navigate to Track page using MongoDB _id
+  const navigateToTrack = (idOrRequestNo: string) => {
+    // Find matching request to get its _id
+    const matched = mappedRequests.find(
+      (m) => m.id === idOrRequestNo || m._id === idOrRequestNo
+    );
+    const targetId = matched?._id || idOrRequestNo;
+    router.push(`/service-requests/track?id=${targetId}`);
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <ServiceRequestHeader
-        activeCount={filteredRequests.length}
+        activeCount={mappedRequests.length}
         onOpenModal={() => setIsModalOpen(true)}
       />
 
@@ -125,24 +148,30 @@ export default function ServiceRequestsPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by ID, title, or property..."
-            className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-300 rounded-sm text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 focus:outline-none transition-all"
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 focus:outline-none transition-all"
           />
         </div>
       </div>
 
-      {/* Table */}
-      <ServiceRequestTable
-        requests={filteredRequests}
-        onNavigateToTrack={navigateToTrack}
-        onStatusChange={handleStatusChange}
-      />
+      {/* Loading state or Table */}
+      {isRequestsLoading ? (
+        <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-12 text-center flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-[#6B1294] animate-spin" />
+          <p className="text-sm font-medium text-gray-600">Loading service requests...</p>
+        </div>
+      ) : (
+        <ServiceRequestTable
+          requests={mappedRequests}
+          onNavigateToTrack={navigateToTrack}
+          onStatusChange={() => {}}
+        />
+      )}
 
       {/* Create Modal */}
       <CreateServiceRequestModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateSubmit}
-        totalRequestsCount={storeRequests.length}
+        onSuccess={() => refetch()}
       />
     </div>
   );

@@ -4,20 +4,35 @@ import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, LogOut, User } from "lucide-react";
 import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { removeToken } from "../../utils/storage";
+import { logout } from "../../features/auth/authSlice";
+import { baseApi } from "../../utils/apiBaseQuery";
+import { useMyProfileQuery } from "../../features/profile/profileApi";
+import { getPropertyImageUrl } from "../../utils/propertyUtils";
 
 export default function Header() {
-  const userName = "Alex Morgan";
-  const userInitials = "AM";
-  const notificationCount = 2;
+  const { data: profileRes } = useMyProfileQuery(undefined);
+  const user = profileRes?.data;
+
+  const firstName = user?.firstName || "";
+  const lastName = user?.lastName || "";
+  const userName = firstName || lastName ? `${firstName} ${lastName}`.trim() : (user?.userName || "Property Manager");
+  const userInitials = (
+    (firstName?.[0] || "") + (lastName?.[0] || (firstName?.[1] || ""))
+  ).toUpperCase() || "PM";
+  const userAvatar = user?.image ? getPropertyImageUrl(user.image) : "";
+  const notificationCount = 0;
 
   const pathname = usePathname();
   const router = useRouter();
+  const dispatch = useDispatch();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isServiceProvider = pathname?.startsWith("/services_provider");
+  const isServiceProvider = pathname?.startsWith("/services_provider") || user?.role === "service_provider";
   const userRole = isServiceProvider ? "Service Provider" : "Property Manager";
 
   // Close dropdown when clicking outside
@@ -49,7 +64,8 @@ export default function Header() {
 
   const handleLogout = () => {
     removeToken();
-    document.cookie = "cat-admin-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    dispatch(logout());
+    dispatch(baseApi.util.resetApiState());
     toast.success("Logged out successfully");
     setIsDropdownOpen(false);
     router.push("/auth/login");
@@ -88,12 +104,20 @@ export default function Header() {
             onClick={handleProfileClick}
             className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 bg-[#FFFFFF] hover:bg-gray-50 rounded-lg border border-[#E5E7EB] transition-colors cursor-pointer shadow-2xs w-full"
           >
-            {/* Initial Avatar Badge */}
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#8E25E3] text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
-              {userInitials}
-            </div>
+            {/* Initial Avatar or Photo Badge */}
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt={userName}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-[#8E25E3]/40 shadow-xs shrink-0"
+              />
+            ) : (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#8E25E3] text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
+                {userInitials}
+              </div>
+            )}
             <div className="hidden sm:flex flex-col text-left leading-tight">
-              <span className="text-xs sm:text-sm font-bold text-gray-900">{userName}</span>
+              <span className="text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[140px]">{userName}</span>
               <span className="text-[10px] font-semibold text-[#8E25E3]">{userRole}</span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 ml-0.5 shrink-0" />

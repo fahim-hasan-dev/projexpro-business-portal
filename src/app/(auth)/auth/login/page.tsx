@@ -89,13 +89,26 @@ export default function LoginPage() {
           const redirectUrl = getRedirectUrlForProfile(profileData);
           router.push(redirectUrl);
         } catch {
-          router.push('/');
+          const userRole = res?.data?.userInfo?.role;
+          const isServiceProvider = userRole === 'service_provider' || userRole === 'provider';
+          router.push(isServiceProvider ? '/service-provider/verification' : '/provider-manager/verification');
         }
       } else {
         toast.error(res?.message || 'Login failed.');
       }
     } catch (error: any) {
       console.error(error);
+      const isOtpRequired =
+        error?.status === 407 ||
+        error?.data?.statusCode === 407 ||
+        error?.data?.message?.toLowerCase().includes('otp has been sent');
+
+      if (isOtpRequired) {
+        toast.success(error?.data?.message || 'An OTP has been sent. Please verify your email.');
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}&type=createAccount`);
+        return;
+      }
+
       const errorMessage = error?.data?.message || error?.message || 'Login failed. Please check your credentials and try again.';
       toast.error(errorMessage);
     }

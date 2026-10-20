@@ -12,9 +12,6 @@ import Step2ContactInfo from "@/components/verification/Step2ContactInfo";
 import Step3BusinessDetails from "@/components/verification/Step3BusinessDetails";
 import Step4ReviewSubmit from "@/components/verification/Step4ReviewSubmit";
 import Step5StatusPending from "@/components/verification/Step5StatusPending";
-import Step6AccountApproved from "@/components/verification/Step6AccountApproved";
-import Step7ChoosePlan, { SelectedPlanInfo } from "@/components/verification/Step7ChoosePlan";
-import Step8BillingActivation from "@/components/verification/Step8BillingActivation";
 
 const yearsToLabel = (years?: number): string => {
   if (!years) return "";
@@ -27,11 +24,18 @@ const yearsToLabel = (years?: number): string => {
 export default function VerificationPage() {
   const router = useRouter();
 
-  // Fetch current user profile to determine role and pre-fill form
-  const { data: profileRes, isLoading: isProfileLoading } = useMyProfileQuery(undefined);
+  // Fetch current user profile to determine role and approval status
+  const { data: profileRes, isLoading: isProfileLoading, refetch } = useMyProfileQuery(undefined);
   const profileData = profileRes?.data || profileRes;
   const userRole = profileData?.role;
   const isServiceProvider = userRole === "service_provider" || userRole === "provider";
+  const isPropertyManager = userRole === "property_manager" || userRole === "manager";
+
+  const approvalStatus =
+    profileData?.approvalStatus || profileData?.profile?.approvalStatus || "pending";
+  const rejectionReason =
+    profileData?.rejectionReason || profileData?.profile?.rejectionReason || "";
+  const completionPercentage = Number(profileData?.profileCompletionPercentage ?? 0);
 
   // Update profile mutation
   const [updateProfile, { isLoading: isSubmitting }] = useUpdateProfileByServiceProviderMutation();
@@ -40,23 +44,12 @@ export default function VerificationPage() {
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [isProfilePreFilled, setIsProfilePreFilled] = useState<boolean>(false);
 
-  const [selectedPlan, setSelectedPlan] = useState<SelectedPlanInfo>({
-    id: "plan-pro",
-    name: "ProjexPro Pro",
-    pricePerUnit: 2.0,
-    monthlyMinimum: 2000,
-    activeUnits: 1250,
-    estimatedTotal: 2500,
-  });
-
   const [formData, setFormData] = useState<VerificationFormData>({
-    // Step 2
     fullName: "",
     jobTitle: "",
     businessEmail: "",
     contactNumber: "",
 
-    // Step 3 common
     companyName: "",
     legalName: "",
     dbaName: "",
@@ -67,12 +60,10 @@ export default function VerificationPage() {
     zipCode: "",
     taxId: "",
 
-    // Property Manager Specific (unused but present in type)
     portfolioSize: "",
     maintenance: "",
     propertyTypes: [],
 
-    // Service Provider new fields
     bio: "",
     skills: [],
     officeAddress: "",
@@ -81,14 +72,12 @@ export default function VerificationPage() {
     officeZipCode: "",
     officePhone: "",
 
-    // Service Provider Specific - Years & Licenses
     yearsInBusiness: "",
     serviceRadius: "",
     serviceCategories: [],
     licenseNumber: "",
     licenses: [],
 
-    // Uploads
     profileImage: null,
     governmentIdFile: null,
     proofOfInsuranceFile: null,
@@ -130,8 +119,8 @@ export default function VerificationPage() {
       yearsInBusiness: profile.yearsInBusiness ? yearsToLabel(profile.yearsInBusiness) : prev.yearsInBusiness,
 
       profileImage: (profileData?.image as any) || (profile as any)?.imageUrl || prev.profileImage,
-      governmentIdFile: profile.governmentId as any || prev.governmentIdFile,
-      proofOfInsuranceFile: profile.proofOfInsurance as any || prev.proofOfInsuranceFile,
+      governmentIdFile: (profile.governmentId as any) || prev.governmentIdFile,
+      proofOfInsuranceFile: (profile.proofOfInsurance as any) || prev.proofOfInsuranceFile,
       additionalDocuments: (profile.documents || []).map((d, i) => ({
         title: d.title || `Document ${i + 1}`,
         fileUrl: d.fileUrl,
@@ -143,24 +132,23 @@ export default function VerificationPage() {
     setIsProfilePreFilled(true);
   }, [profileData, isProfilePreFilled]);
 
-  // Persist and restore step on reload
+  // Handle role redirect if a Property Manager visits this page
+  useEffect(() => {
+    if (!profileData) return;
+    if (isPropertyManager) {
+      router.replace("/provider-manager/verification");
+    }
+  }, [profileData, isPropertyManager, router]);
+
+  // Restore step on initial client mount
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== "undefined") {
       const savedStep = localStorage.getItem("projexpro_sp_verification_step");
       if (savedStep) {
         const parsed = parseInt(savedStep, 10);
-        if (!isNaN(parsed) && parsed >= 1 && parsed <= 8) {
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 5) {
           setCurrentStep(parsed);
-        }
-      }
-
-      const savedPlan = localStorage.getItem("projexpro_sp_verification_plan");
-      if (savedPlan) {
-        try {
-          setSelectedPlan(JSON.parse(savedPlan));
-        } catch (e) {
-          console.error("Error parsing saved plan", e);
         }
       }
     }
@@ -173,21 +161,48 @@ export default function VerificationPage() {
     }
   };
 
+  // Synchronize step based on approval status:
+  // Approved: direct entry into service provider dashboard with no subscription
+  // Pending / Resubmitted: wait on Step 5
+  // Rejected: show rejection screen with resubmit option
+  useEffect(() => {
+    if (!profileData || !isMounted || isPropertyManager) return;
+
+    // 1. Approved Service Provider enters dashboard directly
+    if (approvalStatus === "approved") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("projexpro_sp_verification_step");
+      }
+      router.replace("/services_provider/overview");
+      return;
+    }
+
+    // 2. Pending or Resubmitted: lock to Step 5 once submitted
+    if ((approvalStatus === "pending" || approvalStatus === "resubmitted") && completionPercentage >= 100) {
+      if (currentStep !== 5) {
+        updateStep(5);
+      }
+      return;
+    }
+
+    // 3. Rejected: show rejection screen unless user is editing details
+    if (approvalStatus === "rejected") {
+      if (currentStep !== 2 && currentStep !== 3 && currentStep !== 4) {
+        updateStep(5);
+      }
+      return;
+    }
+  }, [profileData, approvalStatus, completionPercentage, isMounted, isPropertyManager, router, currentStep]);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
-      return updated;
-    });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleUpdateForm = (updater: (prev: VerificationFormData) => VerificationFormData) => {
-    setFormData((prev) => {
-      const updated = updater(prev);
-      return updated;
-    });
+    setFormData((prev) => updater(prev));
   };
 
   const handleSubmitApplication = async () => {
@@ -223,10 +238,6 @@ export default function VerificationPage() {
         },
       };
 
-      // Build FormData (multipart) to match Postman body format:
-      // image, governmentId, proofOfInsurance as file fields
-      // documents as repeated file fields (or separate)
-      // data as JSON text field
       const hasAnyFile =
         formData.profileImage instanceof File ||
         formData.governmentIdFile instanceof File ||
@@ -260,6 +271,7 @@ export default function VerificationPage() {
       if (res?.success || res?.statusCode === 200) {
         toast.success(res?.message || "Application submitted! Admin review in progress...");
         updateStep(5);
+        await refetch();
       } else {
         toast.error(res?.message || "Failed to submit application. Please try again.");
       }
@@ -269,24 +281,6 @@ export default function VerificationPage() {
         error?.data?.message || error?.message || "Failed to submit application. Please try again.";
       toast.error(errorMessage);
     }
-  };
-
-  const handleSelectPlan = (plan: SelectedPlanInfo) => {
-    setSelectedPlan(plan);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("projexpro_sp_verification_plan", JSON.stringify(plan));
-    }
-    updateStep(8);
-  };
-
-  const handlePaymentSuccess = () => {
-    toast.success("Payment Successful! ProjexPro Workspace Activated.");
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("projexpro_sp_verification_step");
-      localStorage.removeItem("projexpro_sp_verification_form_data");
-      localStorage.removeItem("projexpro_sp_verification_plan");
-    }
-    router.push("/service-requests");
   };
 
   if (!isMounted) return null;
@@ -301,9 +295,18 @@ export default function VerificationPage() {
     );
   }
 
+  // If approved, show loader while redirecting to dashboard
+  if (approvalStatus === "approved") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-300 border-t-[#6B1294]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#F9FAFB]">
-      <VerificationSidebar currentStep={Math.min(currentStep, 4)} isServiceProvider={isServiceProvider} />
+      <VerificationSidebar currentStep={Math.min(currentStep, 5)} isServiceProvider={isServiceProvider} />
 
       <div className="flex-1 flex flex-col min-h-screen">
         <VerificationHeaderNav />
@@ -345,28 +348,15 @@ export default function VerificationPage() {
             />
           )}
 
-          {currentStep === 5 && <Step5StatusPending formData={formData} />}
-
-          {currentStep === 6 && (
-            <Step6AccountApproved
-              contactName={formData.fullName}
-              onChoosePlan={() => updateStep(7)}
-            />
-          )}
-
-          {currentStep === 7 && (
-            <Step7ChoosePlan
-              portfolioSizeText={formData.portfolioSize}
-              onSelectPlan={handleSelectPlan}
-            />
-          )}
-
-          {currentStep === 8 && (
-            <Step8BillingActivation
-              selectedPlan={selectedPlan}
-              contactName={formData.fullName}
-              contactEmail={formData.businessEmail}
-              onPaymentSuccess={handlePaymentSuccess}
+          {currentStep === 5 && (
+            <Step5StatusPending
+              formData={formData}
+              approvalStatus={approvalStatus}
+              rejectionReason={rejectionReason}
+              isServiceProvider={true}
+              onResubmit={() => updateStep(2)}
+              onRefresh={() => refetch()}
+              isRefreshing={isProfileLoading}
             />
           )}
         </div>
@@ -374,3 +364,4 @@ export default function VerificationPage() {
     </div>
   );
 }
+

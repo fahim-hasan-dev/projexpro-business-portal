@@ -4,7 +4,7 @@ import { removeToken, saveToken } from "./authService";
 
 
 const initialState = {
-  token: "jllkjfsdf",
+  token: null,
 };
 
 const authSlice = createSlice({

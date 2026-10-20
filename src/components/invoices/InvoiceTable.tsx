@@ -125,7 +125,7 @@ export default function InvoiceTable({
                     {inv.status !== "Paid" && (
                       <button
                         type="button"
-                        onClick={() => onPayInvoice(inv.id)}
+                        onClick={() => onPayInvoice(inv._id || inv.id)}
                         className="w-8 h-8 rounded-lg bg-[#DCFCE7] hover:bg-[#bbf7d0] text-[#16A34A] border border-[#BBF7D0] flex items-center justify-center transition-colors cursor-pointer"
                         title="Approve / Pay"
                       >

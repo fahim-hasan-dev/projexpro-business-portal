@@ -37,7 +37,7 @@ export default function VerificationSidebar({
               <Shield className="w-8 h-8 text-purple-200" />
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-white">
-              Property Partner Verification
+              {isServiceProvider ? "Service Provider Verification" : "Property Partner Verification"}
             </h2>
             <p className="text-xs text-purple-200/80 leading-relaxed font-normal">
               Your application is being reviewed by the platform administrator.

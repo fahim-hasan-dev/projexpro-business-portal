@@ -3,6 +3,8 @@
 import { Building2, CheckCircle2, Receipt, Wrench } from "lucide-react";
 import Link from "next/link";
 import React from "react";
+import { useGetMyPropertiesQuery } from "@/features/property/propertyApi";
+import { useMyProfileQuery } from "@/features/profile/profileApi";
 import {
   Bar,
   BarChart,
@@ -68,12 +70,22 @@ const recentActivities = [
 ];
 
 export default function Overview(): React.ReactElement {
+  const { data: propertiesRes } = useGetMyPropertiesQuery();
+  const { data: profileRes } = useMyProfileQuery(undefined);
+
+  const profileUser = profileRes?.data || profileRes;
+  const userName = profileUser?.firstName || profileUser?.userName || "there";
+
+  const properties = propertiesRes?.data?.properties || [];
+  const totalProperties = propertiesRes?.data?.totalProperties ?? properties.length;
+  const totalUnits = properties.reduce((sum, p) => sum + (p.totalUnits || 1), 0);
+
   return (
     <div className="space-y-6">
       {/* Header Greeting */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-          Hi Alex 👋
+          Hi {userName} 👋
         </h1>
         <p className="text-sm text-gray-500 font-normal mt-1">
           Welcome to your <span className="font-semibold text-[#5B1B95]">ProjexPro</span> dashboard.
@@ -159,9 +171,9 @@ export default function Overview(): React.ReactElement {
             </div>
           </div>
           <div className="mt-3">
-            <h2 className="text-3xl font-bold text-gray-900">10</h2>
+            <h2 className="text-3xl font-bold text-gray-900">{totalProperties}</h2>
             <p className="text-xs font-semibold text-[#8E25E3] mt-1">
-              5 Units | 50% Occupied
+              {totalUnits} {totalUnits === 1 ? "Unit" : "Units"} Total
             </p>
           </div>
         </Link>

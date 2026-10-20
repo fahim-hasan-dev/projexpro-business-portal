@@ -39,14 +39,27 @@ export interface IServiceProviderProfile {
 }
 
 export interface IPropertyManagerProfile {
+  contactFullName?: string;
+  jobTitle?: string;
+  businessEmail?: string;
+  businessPhone?: string;
+  companyName?: string;
+  legalBusinessName?: string;
+  dbaTradeName?: string;
+  companyWebsiteUrl?: string;
+  businessAddress?: string;
   streetAddress?: string;
   city?: string;
   state?: string;
   zipCode?: string;
-  companyName?: string;
-  portfolioSize?: string;
+  taxId?: string;
+  portfolioSize?: number | string;
+  activeUnits?: number;
+  maintenanceInfrastructure?: string;
   maintenanceApproach?: string;
   propertyTypes?: string[];
+  approvalStatus?: APPROVAL_STATUS;
+  rejectionReason?: string;
 }
 
 export interface VerificationFormData {

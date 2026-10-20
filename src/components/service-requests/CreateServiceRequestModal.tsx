@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { UploadCloud, X } from "lucide-react";
-import { PriorityType, ServiceRequest } from "@/types/serviceRequest";
+import React, { useState, useRef, useEffect } from "react";
+import { UploadCloud, X, Loader2 } from "lucide-react";
+import { PriorityType } from "@/types/serviceRequest";
 import {
   Select,
   SelectContent,
@@ -11,21 +11,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import toast from "react-hot-toast";
+import { useGetMyPropertiesQuery } from "@/features/property/propertyApi";
+import { useCreateServiceRequestMutation } from "@/features/serviceRequest/serviceRequestApi";
 
 interface CreateServiceRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (newReq: ServiceRequest) => void;
-  totalRequestsCount: number;
+  onSuccess?: () => void;
 }
 
 export default function CreateServiceRequestModal({
   isOpen,
   onClose,
-  onSubmit,
-  totalRequestsCount,
+  onSuccess,
 }: CreateServiceRequestModalProps) {
-  const [formProperty, setFormProperty] = useState<string>("Sunset Apartments");
+  const { data: propertiesRes, isLoading: isPropertiesLoading } = useGetMyPropertiesQuery(undefined, {
+    skip: !isOpen,
+  });
+  const [createServiceRequest, { isLoading: isCreating }] = useCreateServiceRequestMutation();
+
+  const properties = propertiesRes?.data?.properties || [];
+
+  const [formPropertyId, setFormPropertyId] = useState<string>("");
   const [formTitle, setFormTitle] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formPriority, setFormPriority] = useState<PriorityType>("Medium");
@@ -34,15 +41,24 @@ export default function CreateServiceRequestModal({
   const [formTenantPhone, setFormTenantPhone] = useState<string>("");
   const [formExtraTitle, setFormExtraTitle] = useState<string>("");
   const [formImage, setFormImage] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Auto-select first property if none selected
+  useEffect(() => {
+    if (properties.length > 0 && !formPropertyId) {
+      setFormPropertyId(properties[0]._id);
+    }
+  }, [properties, formPropertyId]);
 
   if (!isOpen) return null;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const imageUrl = URL.createObjectURL(file);
       setFormImage(imageUrl);
       setErrors((prev) => ({ ...prev, image: "" }));
@@ -53,18 +69,19 @@ export default function CreateServiceRequestModal({
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const imageUrl = URL.createObjectURL(file);
       setFormImage(imageUrl);
       setErrors((prev) => ({ ...prev, image: "" }));
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: Record<string, string> = {};
 
-    if (!formProperty) {
+    if (!formPropertyId) {
       newErrors.property = "Property selection is required";
     }
     if (!formTitle.trim()) {
@@ -89,35 +106,51 @@ export default function CreateServiceRequestModal({
       return;
     }
 
-    const newId = `SR-00${totalRequestsCount + 1}`;
-    const newReq: ServiceRequest = {
-      id: newId,
-      title: formTitle,
-      property: formProperty,
-      address: "123 Sunset Blvd, Los Angeles, CA 90028",
-      priority: formPriority,
-      status: "Pending",
-      stage: 1,
-      stageText: "Stage 1: Started",
-      contractor: "Unassigned",
-      createdDate: "Jun 26, 2026",
-      isOccupied: formIsOccupied,
-      tenantName: formIsOccupied ? formTenantName : undefined,
-      tenantPhone: formIsOccupied ? formTenantPhone : undefined,
-    };
+    try {
+      const payload = {
+        property: formPropertyId,
+        issueTitle: formTitle.trim(),
+        description: formDescription.trim(),
+        priority: formPriority,
+        isOccupied: formIsOccupied,
+        tenantName: formIsOccupied ? formTenantName.trim() : undefined,
+        tenantPhone: formIsOccupied ? formTenantPhone.trim() : undefined,
+        locationDetails: formExtraTitle.trim() || undefined,
+      };
 
-    onSubmit(newReq);
+      let bodyData: FormData | typeof payload;
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+        formData.append("data", JSON.stringify(payload));
+        bodyData = formData;
+      } else {
+        bodyData = payload;
+      }
 
-    // Reset Form
-    setFormTitle("");
-    setFormDescription("");
-    setFormPriority("Medium");
-    setFormIsOccupied(false);
-    setFormTenantName("");
-    setFormTenantPhone("");
-    setFormExtraTitle("");
-    setFormImage("");
-    setErrors({});
+      await createServiceRequest(bodyData).unwrap();
+
+      toast.success("Service request submitted successfully! Sent to Admin for review.");
+      
+      // Reset Form
+      setFormTitle("");
+      setFormDescription("");
+      setFormPriority("Medium");
+      setFormIsOccupied(false);
+      setFormTenantName("");
+      setFormTenantPhone("");
+      setFormExtraTitle("");
+      setFormImage("");
+      setSelectedFile(null);
+      setErrors({});
+
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      console.error("Create service request error:", err);
+      const msg = err?.data?.message || err?.message || "Failed to submit service request";
+      toast.error(msg);
+    }
   };
 
   return (
@@ -130,7 +163,7 @@ export default function CreateServiceRequestModal({
               Create Service Request
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 font-normal mt-0.5">
-              Submit a new request for your property maintenance team.
+              Submit a new maintenance request for your property.
             </p>
           </div>
           <button
@@ -149,24 +182,33 @@ export default function CreateServiceRequestModal({
               Select Property *
             </label>
             <Select
-              value={formProperty}
+              value={formPropertyId}
               onValueChange={(val) => {
-                setFormProperty(val);
+                setFormPropertyId(val);
                 setErrors((prev) => ({ ...prev, property: "" }));
               }}
             >
               <SelectTrigger
-                className={`w-full h-[46px] px-4 py-6 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all cursor-pointer shadow-none ${errors.property ? "border-red-500 bg-red-50/20" : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                  }`}
+                className={`w-full h-[46px] px-4 py-6 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all cursor-pointer shadow-none ${
+                  errors.property
+                    ? "border-red-500 bg-red-50/20"
+                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                }`}
               >
-                <SelectValue placeholder="Select Property" />
+                <SelectValue placeholder={isPropertiesLoading ? "Loading properties..." : "Select Property"} />
               </SelectTrigger>
               <SelectContent className="bg-white rounded-lg border border-gray-200 shadow-lg z-[60]">
-                <SelectItem className="py-3" value="Sunset Apartments">Sunset Apartments</SelectItem>
-                <SelectItem className="py-3" value="Green Valley Complex">Green Valley Complex</SelectItem>
-                <SelectItem className="py-3" value="TechHub Tower">TechHub Tower</SelectItem>
-                <SelectItem className="py-3" value="Maple Street Condos">Maple Street Condos</SelectItem>
-                <SelectItem className="py-3" value="Harbor View Plaza">Harbor View Plaza</SelectItem>
+                {properties.length > 0 ? (
+                  properties.map((p) => (
+                    <SelectItem key={p._id} className="py-2.5 cursor-pointer" value={p._id}>
+                      {p.name} {p.address ? `(${p.address})` : ""}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>
+                    {isPropertiesLoading ? "Loading properties..." : "No properties found. Please create a property first."}
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
             {errors.property && (
@@ -189,8 +231,11 @@ export default function CreateServiceRequestModal({
                 if (e.target.value.trim()) setErrors((prev) => ({ ...prev, title: "" }));
               }}
               placeholder="e.g. Water Leak under Kitchen Sink"
-              className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${errors.title ? "border-red-500 bg-red-50/20" : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                }`}
+              className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                errors.title
+                  ? "border-red-500 bg-red-50/20"
+                  : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+              }`}
             />
             {errors.title && (
               <p className="text-red-500 text-xs mt-1 font-semibold flex items-center gap-1">
@@ -212,8 +257,11 @@ export default function CreateServiceRequestModal({
                 if (e.target.value.trim()) setErrors((prev) => ({ ...prev, description: "" }));
               }}
               placeholder="Detailed description of the issue..."
-              className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all resize-none ${errors.description ? "border-red-500 bg-red-50/20" : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                }`}
+              className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all resize-none ${
+                errors.description
+                  ? "border-red-500 bg-red-50/20"
+                  : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+              }`}
             />
             {errors.description && (
               <p className="text-red-500 text-xs mt-1 font-semibold flex items-center gap-1">
@@ -233,10 +281,11 @@ export default function CreateServiceRequestModal({
                   key={pri}
                   type="button"
                   onClick={() => setFormPriority(pri)}
-                  className={`py-2.5 px-2 rounded-lg font-medium text-xs sm:text-sm text-center cursor-pointer transition-all ${formPriority === pri
-                    ? "border-2 border-[#6B1294] bg-[#F2E7FC] text-[#6B1294] font-bold"
-                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                    }`}
+                  className={`py-2.5 px-2 rounded-lg font-medium text-xs sm:text-sm text-center cursor-pointer transition-all ${
+                    formPriority === pri
+                      ? "border-2 border-[#6B1294] bg-[#F2E7FC] text-[#6B1294] font-bold"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  }`}
                 >
                   {pri}
                 </button>
@@ -247,26 +296,28 @@ export default function CreateServiceRequestModal({
           {/* Occupied Toggle */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Is unit/ property occupied? *
+              Is unit / property occupied? *
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setFormIsOccupied(true)}
-                className={`py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center cursor-pointer transition-all ${formIsOccupied
-                  ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-800"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                  }`}
+                className={`py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center cursor-pointer transition-all ${
+                  formIsOccupied
+                    ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-800"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
               >
                 Yes
               </button>
               <button
                 type="button"
                 onClick={() => setFormIsOccupied(false)}
-                className={`py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center cursor-pointer transition-all ${!formIsOccupied
-                  ? "border-2 border-red-300 bg-red-100 text-red-700"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                  }`}
+                className={`py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center cursor-pointer transition-all ${
+                  !formIsOccupied
+                    ? "border-2 border-red-300 bg-red-100 text-red-700"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
               >
                 No
               </button>
@@ -288,9 +339,12 @@ export default function CreateServiceRequestModal({
                       setFormTenantName(e.target.value);
                       if (e.target.value.trim()) setErrors((prev) => ({ ...prev, tenantName: "" }));
                     }}
-                    placeholder="Nichole"
-                    className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${errors.tenantName ? "border-red-500 bg-red-50/20" : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                      }`}
+                    placeholder="e.g. John Doe"
+                    className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                      errors.tenantName
+                        ? "border-red-500 bg-red-50/20"
+                        : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                    }`}
                   />
                   {errors.tenantName && (
                     <p className="text-red-500 text-xs mt-1 font-semibold flex items-center gap-1">
@@ -309,9 +363,12 @@ export default function CreateServiceRequestModal({
                       setFormTenantPhone(e.target.value);
                       if (e.target.value.trim()) setErrors((prev) => ({ ...prev, tenantPhone: "" }));
                     }}
-                    placeholder="+555 2552 552"
-                    className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${errors.tenantPhone ? "border-red-500 bg-red-50/20" : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                      }`}
+                    placeholder="+1 (555) 255-2552"
+                    className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                      errors.tenantPhone
+                        ? "border-red-500 bg-red-50/20"
+                        : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                    }`}
                   />
                   {errors.tenantPhone && (
                     <p className="text-red-500 text-xs mt-1 font-semibold flex items-center gap-1">
@@ -323,13 +380,13 @@ export default function CreateServiceRequestModal({
 
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                  Request Location Details
+                  Request Location Details (Unit / Room)
                 </label>
                 <input
                   type="text"
                   value={formExtraTitle}
                   onChange={(e) => setFormExtraTitle(e.target.value)}
-                  placeholder="Where is the issue? Example- Leaking pipe in kitchen"
+                  placeholder="e.g. Unit 4B, 2nd floor, kitchen area"
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 focus:outline-none transition-all"
                 />
               </div>
@@ -339,7 +396,7 @@ export default function CreateServiceRequestModal({
           {/* Photos Upload */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Upload Photos
+              Upload Photo (Optional)
             </label>
             <input
               type="file"
@@ -352,12 +409,13 @@ export default function CreateServiceRequestModal({
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all ${errors.image
-                ? "border-red-500 bg-red-50/30"
-                : formImage
+              className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all ${
+                errors.image
+                  ? "border-red-500 bg-red-50/30"
+                  : formImage
                   ? "border-purple-400 bg-purple-50/30"
                   : "border-gray-300 bg-white hover:bg-purple-50/20"
-                }`}
+              }`}
             >
               {formImage ? (
                 <div className="relative group">
@@ -380,7 +438,7 @@ export default function CreateServiceRequestModal({
                     </span>
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    PNG, JPG up to 3 images
+                    PNG, JPG up to 10MB
                   </p>
                 </>
               )}
@@ -397,15 +455,18 @@ export default function CreateServiceRequestModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={isCreating}
               className="flex-1 py-3.5 px-4 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg text-gray-800 font-semibold text-sm sm:text-base transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 py-3.5 px-4 bg-[#6B1294] hover:bg-[#580e7d] text-white font-semibold rounded-lg shadow-sm text-sm sm:text-base transition-colors cursor-pointer"
+              disabled={isCreating}
+              className="flex-1 py-3.5 px-4 bg-[#6B1294] hover:bg-[#580e7d] disabled:opacity-50 text-white font-semibold rounded-lg shadow-sm text-sm sm:text-base transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              Submit Request
+              {isCreating && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{isCreating ? "Submitting..." : "Submit Request"}</span>
             </button>
           </div>
         </form>

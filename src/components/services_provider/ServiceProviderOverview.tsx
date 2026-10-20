@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Wrench,
@@ -19,194 +19,29 @@ import {
   Search,
   FileText,
   Shield,
+  Loader2,
+  RefreshCw,
+  Play,
+  Upload,
 } from "lucide-react";
 import toast from "react-hot-toast";
-
-export interface OverviewJobItem {
-  id: string;
-  priority: "HIGH" | "MEDIUM" | "LOW";
-  title: string;
-  category: string;
-  status: "In Progress" | "Pending" | "Completed" | "Cancelled";
-  statusStyle: string;
-  priorityColor: string;
-  payout: string;
-  clientName: string;
-  postedBy: string;
-  unit: string;
-  scheduledDate: string;
-  scheduledTime?: string;
-  address: string;
-  scopeDescription: string;
-  notes: string;
-  images: string[];
-  progressPercent: number;
-  tabCategory: "assigned" | "upcoming" | "completed";
-}
-
-const initialJobRequests: OverviewJobItem[] = [
-  {
-    id: "JOB-001",
-    priority: "HIGH",
-    title: "Maple Heights Apt",
-    category: "Plumbing Repair",
-    status: "In Progress",
-    statusStyle: "bg-blue-100 text-blue-800 border border-blue-200/80",
-    priorityColor: "text-[#E53935]",
-    payout: "$350",
-    clientName: "Sarah Johnson",
-    postedBy: "Sarah Johnson (Property Manager)",
-    unit: "Unit 204",
-    scheduledDate: "June 26, 2026",
-    scheduledTime: "8:00 AM",
-    address: "410 Maple St, Austin, TX 78703",
-    scopeDescription: "Kitchen sink pipe leakage fix and new faucet installation.",
-    notes: "Tenant will be at home during repair. Gate code #4412.",
-    images: ["/images/prop_5.png"],
-    progressPercent: 40,
-    tabCategory: "assigned",
-  },
-  {
-    id: "JOB-002",
-    priority: "MEDIUM",
-    title: "Riverside Condos",
-    category: "Electrical Inspection",
-    status: "Pending",
-    statusStyle: "bg-amber-100 text-amber-800 border border-amber-200/80",
-    priorityColor: "text-[#D97706]",
-    payout: "$220",
-    clientName: "Marcus Chen",
-    postedBy: "Marcus Chen (Property Owner)",
-    unit: "Condo 501",
-    scheduledDate: "July 27, 2026",
-    scheduledTime: "10:30 AM",
-    address: "120 Riverside Dr, Austin, TX 78702",
-    scopeDescription: "Circuit breaker tripping investigation and outlet replacement.",
-    notes: "Main breaker panel is located in the basement.",
-    images: ["/images/prop_3.png"],
-    progressPercent: 0,
-    tabCategory: "upcoming",
-  },
-  {
-    id: "JOB-003",
-    priority: "HIGH",
-    title: "Pine Ridge Complex",
-    category: "HVAC Maintenance",
-    status: "In Progress",
-    statusStyle: "bg-blue-100 text-blue-800 border border-blue-200/80",
-    priorityColor: "text-[#E53935]",
-    payout: "$410",
-    clientName: "Robert Davis",
-    postedBy: "Robert Davis (Property Manager)",
-    unit: "Bldg C, Unit 102",
-    scheduledDate: "June 26, 2026",
-    scheduledTime: "11:30 AM",
-    address: "550 Pine Ridge Blvd, Austin, TX 78745",
-    scopeDescription: "Central AC unit filter replacement and coolant leak check.",
-    notes: "Access key code is in lockbox by back entryway.",
-    images: ["/images/prop_1.png"],
-    progressPercent: 25,
-    tabCategory: "assigned",
-  },
-  {
-    id: "JOB-004",
-    priority: "HIGH",
-    title: "Sunset Gardens",
-    category: "Roof Inspection",
-    status: "Pending",
-    statusStyle: "bg-amber-100 text-amber-800 border border-amber-200/80",
-    priorityColor: "text-[#E53935]",
-    payout: "$280",
-    clientName: "David Park",
-    postedBy: "Alex (Property Manager)",
-    unit: "Building B Roof",
-    scheduledDate: "July 26, 2026",
-    scheduledTime: "8:30 AM",
-    address: "320 Sunset Loop, Austin, TX 78745",
-    scopeDescription: "Full roof tile leak assessment following heavy storm.",
-    notes: "Ladder access located at North wing entrance.",
-    images: ["/images/prop_1.png"],
-    progressPercent: 0,
-    tabCategory: "upcoming",
-  },
-  {
-    id: "JOB-005",
-    priority: "LOW",
-    title: "Oak Ridge Apartments",
-    category: "Carpentry & Door Lock Repair",
-    status: "Completed",
-    statusStyle: "bg-emerald-100 text-emerald-800 border border-emerald-200/80",
-    priorityColor: "text-gray-600",
-    payout: "$190",
-    clientName: "Elena Rostova",
-    postedBy: "Elena (Building Admin)",
-    unit: "Unit 308",
-    scheduledDate: "June 20, 2026",
-    scheduledTime: "1:00 PM",
-    address: "880 Oak Ridge Way, Austin, TX 78704",
-    scopeDescription: "Front entrance deadbolt lock adjustment and frame alignment.",
-    notes: "Completed successfully. Receipt uploaded.",
-    images: [],
-    progressPercent: 100,
-    tabCategory: "completed",
-  },
-  {
-    id: "JOB-006",
-    priority: "HIGH",
-    title: "Harbor View Lofts",
-    category: "Flooring Installation",
-    status: "In Progress",
-    statusStyle: "bg-blue-100 text-blue-800 border border-blue-200/80",
-    priorityColor: "text-[#E53935]",
-    payout: "$450",
-    clientName: "James Wilson",
-    postedBy: "Sarah (Operations Lead)",
-    unit: "Unit 12A",
-    scheduledDate: "June 26, 2026",
-    scheduledTime: "2:00 PM",
-    address: "742 Harbor View Ave, Austin, TX 78701",
-    scopeDescription: "Hardwood flooring installation in main hallway and living area.",
-    notes: "Elevator access key available at front desk.",
-    images: ["/images/prop_2.png", "/images/prop_4.png"],
-    progressPercent: 65,
-    tabCategory: "assigned",
-  },
-  {
-    id: "JOB-007",
-    priority: "MEDIUM",
-    title: "Highland Park Villas",
-    category: "Drywall & Painting Touchup",
-    status: "Completed",
-    statusStyle: "bg-emerald-100 text-emerald-800 border border-emerald-200/80",
-    priorityColor: "text-[#D97706]",
-    payout: "$310",
-    clientName: "Karen Miller",
-    postedBy: "Karen Miller (Property Manager)",
-    unit: "Villa 14",
-    scheduledDate: "June 18, 2026",
-    scheduledTime: "10:00 AM",
-    address: "1050 Highland Pkwy, Austin, TX 78731",
-    scopeDescription: "Living room wall water stain patch and paint touchup.",
-    notes: "Closed out with manager approval.",
-    images: [],
-    progressPercent: 100,
-    tabCategory: "completed",
-  },
-];
+import {
+  useGetAllServiceRequestsQuery,
+  useUpdateServiceRequestStatusMutation,
+} from "@/features/serviceRequest/serviceRequestApi";
+import { useMyProfileQuery } from "@/features/profile/profileApi";
+import { IServiceRequest } from "@/types/serviceRequest";
 
 export default function ServiceProviderOverview(): React.ReactElement {
-  const [jobRequests, setJobRequests] = useState<OverviewJobItem[]>(initialJobRequests);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-
-  // Filter Tab State for Option 1: Strict Tab Filtering
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "assigned" | "upcoming" | "completed" | "earnings">("all");
 
   // Modals state
-  const [selectedJob, setSelectedJob] = useState<OverviewJobItem | null>(null);
-  const [progressModalJob, setProgressModalJob] = useState<OverviewJobItem | null>(null);
-  const [discussionJob, setDiscussionJob] = useState<OverviewJobItem | null>(null);
-  const [changeRequestJob, setChangeRequestJob] = useState<OverviewJobItem | null>(null);
-  const [reassignJob, setReassignJob] = useState<OverviewJobItem | null>(null);
+  const [selectedJob, setSelectedJob] = useState<IServiceRequest | null>(null);
+  const [progressModalJob, setProgressModalJob] = useState<IServiceRequest | null>(null);
+  const [discussionJob, setDiscussionJob] = useState<IServiceRequest | null>(null);
+  const [changeRequestJob, setChangeRequestJob] = useState<IServiceRequest | null>(null);
+  const [reassignJob, setReassignJob] = useState<IServiceRequest | null>(null);
 
   // Form states for modals
   const [progressValue, setProgressValue] = useState<number>(50);
@@ -219,14 +54,64 @@ export default function ServiceProviderOverview(): React.ReactElement {
   const [reassignReason, setReassignReason] = useState<string>("Schedule Conflict");
   const [reassignNotes, setReassignNotes] = useState<string>("");
 
-  // Statistics Definition
+  // Queries
+  const { data: profileData } = useMyProfileQuery(undefined);
+  const {
+    data: requestsData,
+    isLoading: isRequestsLoading,
+    isFetching: isRequestsFetching,
+    refetch: refetchRequests,
+  } = useGetAllServiceRequestsQuery();
+
+  const [updateStatus, { isLoading: isUpdating }] = useUpdateServiceRequestStatusMutation();
+
+  const user = profileData?.data || profileData?.user;
+  const firstName = user?.firstName || "Provider";
+
+  const rawRequests: IServiceRequest[] = useMemo(() => {
+    if (!requestsData?.data) return [];
+    if (Array.isArray(requestsData.data.requests)) {
+      return requestsData.data.requests;
+    }
+    if (Array.isArray(requestsData.data)) {
+      return requestsData.data;
+    }
+    return [];
+  }, [requestsData]);
+
+  // Statistics calculation
+  const assignedCount = useMemo(() => {
+    return rawRequests.filter(
+      (r) => r.status === "Assigned" || r.status === "Accepted" || r.status === "In Progress"
+    ).length;
+  }, [rawRequests]);
+
+  const upcomingCount = useMemo(() => {
+    return rawRequests.filter((r) => r.status === "Assigned").length;
+  }, [rawRequests]);
+
+  const completedCount = useMemo(() => {
+    return rawRequests.filter((r) => r.status === "Completed").length;
+  }, [rawRequests]);
+
+  const totalEarnings = useMemo(() => {
+    return rawRequests
+      .filter((r) => r.status === "Completed")
+      .reduce((sum, r) => sum + (r.finalPayout ?? r.basePayment ?? 0), 0);
+  }, [rawRequests]);
+
+  const pendingApprovalCount = useMemo(() => {
+    return rawRequests.filter((r) => r.status === "Pending Approval").length;
+  }, [rawRequests]);
+
+  // Top 4 stats definitions
   const stats = [
     {
       id: "assigned",
       tabKey: "assigned" as const,
-      label: "TODAY'S WORK ORDERS",
-      value: "5",
-      subtext: "Assigned Jobs",
+      label: "ACTIVE WORK ORDERS",
+      value: String(assignedCount),
+      subtext: "Assigned & In Progress",
       icon: Wrench,
       iconBg: "bg-[#F0E6FC] text-[#8E25E3]",
       linkColor: "text-[#8E25E3]",
@@ -234,9 +119,9 @@ export default function ServiceProviderOverview(): React.ReactElement {
     {
       id: "upcoming",
       tabKey: "upcoming" as const,
-      label: "UPCOMING WORK ORDERS",
-      value: "3",
-      subtext: "Scheduled next 7 days",
+      label: "PENDING ACCEPTANCE",
+      value: String(upcomingCount),
+      subtext: "Awaiting your response",
       icon: Clock,
       iconBg: "bg-[#FEF3C7] text-[#D97706]",
       linkColor: "text-[#D97706]",
@@ -245,8 +130,8 @@ export default function ServiceProviderOverview(): React.ReactElement {
       id: "completed",
       tabKey: "completed" as const,
       label: "COMPLETED",
-      value: "2",
-      subtext: "Work Orders closed this month",
+      value: String(completedCount),
+      subtext: "Successfully finished jobs",
       icon: CheckCircle2,
       iconBg: "bg-[#DBEAFE] text-[#2563EB]",
       linkColor: "text-[#2563EB]",
@@ -254,84 +139,152 @@ export default function ServiceProviderOverview(): React.ReactElement {
     {
       id: "earnings",
       tabKey: "earnings" as const,
-      label: "PAID THIS MONTH",
-      value: "$ 300",
-      subtext: "$1,100 Awaiting Payment",
+      label: "TOTAL EARNINGS",
+      value: `$ ${totalEarnings.toLocaleString()}`,
+      subtext: `${pendingApprovalCount} Awaiting PM Approval`,
       icon: DollarSign,
       iconBg: "bg-[#D1FAE5] text-[#059669]",
       linkColor: "text-[#059669]",
     },
   ];
 
-  // Filtering Logic for Strict Tab Filtering (Option 1)
-  const filteredJobRequests = jobRequests.filter((job) => {
-    if (activeTabFilter === "all") return true;
-    if (activeTabFilter === "assigned") return job.tabCategory === "assigned" || job.status === "In Progress";
-    if (activeTabFilter === "upcoming") return job.tabCategory === "upcoming" || job.status === "Pending";
-    if (activeTabFilter === "completed") return job.tabCategory === "completed" || job.status === "Completed";
-    if (activeTabFilter === "earnings") return job.status === "Completed";
-    return true;
-  });
+  // Filtering Logic for Tabs
+  const filteredJobRequests = useMemo(() => {
+    return rawRequests.filter((job) => {
+      if (activeTabFilter === "all") return true;
+      if (activeTabFilter === "assigned") {
+        return job.status === "Assigned" || job.status === "Accepted" || job.status === "In Progress";
+      }
+      if (activeTabFilter === "upcoming") {
+        return job.status === "Assigned";
+      }
+      if (activeTabFilter === "completed" || activeTabFilter === "earnings") {
+        return job.status === "Completed";
+      }
+      return true;
+    });
+  }, [rawRequests, activeTabFilter]);
 
-  const handleAcceptJob = (jobId: string) => {
-    setJobRequests((prev) =>
-      prev.map((j) =>
-        j.id === jobId
-          ? {
-            ...j,
-            status: "In Progress",
-            tabCategory: "assigned",
-            statusStyle: "bg-blue-100 text-blue-800 border border-blue-200/80",
-            progressPercent: 15,
-          }
-          : j
-      )
-    );
-    toast.success(`Job ${jobId} accepted! Status changed to In Progress.`);
+  // Handle Accept Job
+  const handleAcceptJob = async (jobId: string) => {
+    try {
+      await updateStatus({
+        id: jobId,
+        data: { status: "Accepted" },
+      }).unwrap();
+      toast.success("Work Order accepted! You can now start work.");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to accept job");
+    }
   };
 
-  const handleSaveProgress = () => {
+  // Handle Start Job
+  const handleStartJob = async (jobId: string) => {
+    try {
+      await updateStatus({
+        id: jobId,
+        data: { status: "In Progress" },
+      }).unwrap();
+      toast.success("Job started! Status changed to In Progress.");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to start job");
+    }
+  };
+
+  // Handle Save Progress / Completion
+  const handleSaveProgress = async () => {
     if (!progressModalJob) return;
-    setJobRequests((prev) =>
-      prev.map((j) =>
-        j.id === progressModalJob.id
-          ? {
-            ...j,
-            status: selectedProgressStatus,
-            tabCategory: selectedProgressStatus === "Completed" ? "completed" : "assigned",
-            statusStyle:
-              selectedProgressStatus === "Completed"
-                ? "bg-emerald-100 text-emerald-800 border border-emerald-200/80"
-                : "bg-blue-100 text-blue-800 border border-blue-200/80",
-            progressPercent: selectedProgressStatus === "Completed" ? 100 : progressValue,
-          }
-          : j
-      )
-    );
-    toast.success(`Progress updated for ${progressModalJob.id}`);
-    setProgressModalJob(null);
-    setProgressNote("");
+
+    try {
+      const nextStatus = selectedProgressStatus === "Completed" ? "Pending Approval" : "In Progress";
+      await updateStatus({
+        id: progressModalJob._id,
+        data: {
+          status: nextStatus,
+          note: progressNote.trim() || undefined,
+        },
+      }).unwrap();
+
+      if (selectedProgressStatus === "Completed") {
+        toast.success("Work submitted for Property Manager review & approval!");
+      } else {
+        toast.success("Progress note updated successfully.");
+      }
+
+      setProgressModalJob(null);
+      setProgressNote("");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to update progress");
+    }
   };
 
+  // Handle Discussion
   const handleSendDiscussion = () => {
     if (!discussionJob || !discussionMessage.trim()) return;
-    toast.success(`Message sent to ${discussionJob.postedBy}`);
+    toast.success("Inquiry sent to Property Manager.");
     setDiscussionJob(null);
     setDiscussionMessage("");
   };
 
+  // Handle Change Request
   const handleSendChangeRequest = () => {
     if (!changeRequestJob || !changeDetails.trim()) return;
-    toast.success(`Change request for ${changeRequestJob.id} submitted.`);
+    toast.success(`Change request for ${changeRequestJob.requestNo} submitted.`);
     setChangeRequestJob(null);
     setChangeDetails("");
   };
 
-  const handleSendReassignment = () => {
+  // Handle Reassignment Request (Decline / Reject)
+  const handleSendReassignment = async () => {
     if (!reassignJob) return;
-    toast.success(`Reassignment request for ${reassignJob.id} submitted to Property Manager.`);
-    setReassignJob(null);
-    setReassignNotes("");
+    try {
+      await updateStatus({
+        id: reassignJob._id,
+        data: {
+          status: "Rejected",
+          reason: `${reassignReason}${reassignNotes ? `: ${reassignNotes}` : ""}`,
+        },
+      }).unwrap();
+
+      toast.success("Job declined & reassignment requested to Super Admin.");
+      setReassignJob(null);
+      setReassignNotes("");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to request reassignment");
+    }
+  };
+
+  const getPropertyName = (property: any) => {
+    if (!property) return "Property";
+    if (typeof property === "string") return property;
+    return property.title || property.name || "Property";
+  };
+
+  const getPMName = (u: any) => {
+    if (!u) return "Property Manager";
+    if (typeof u === "string") return "Property Manager";
+    const name = `${u.firstName || ""} ${u.lastName || ""}`.trim();
+    return name || u.userName || u.email || "Property Manager";
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "Assigned":
+        return "bg-amber-100 text-amber-800 border border-amber-200/80";
+      case "Accepted":
+        return "bg-blue-100 text-blue-800 border border-blue-200/80";
+      case "In Progress":
+        return "bg-indigo-100 text-indigo-800 border border-indigo-200/80";
+      case "Pending Approval":
+        return "bg-purple-100 text-[#6B1294] border border-purple-200/80";
+      case "Completed":
+        return "bg-emerald-100 text-emerald-800 border border-emerald-200/80";
+      case "Rejected":
+      case "Declined":
+        return "bg-red-100 text-red-800 border border-red-200/80";
+      default:
+        return "bg-gray-100 text-gray-800 border border-gray-200/80";
+    }
   };
 
   return (
@@ -345,19 +298,32 @@ export default function ServiceProviderOverview(): React.ReactElement {
       )}
 
       {/* Header Section */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 tracking-tight">
-          Hi, James 👋
-        </h1>
-        <p className="text-sm text-gray-700 font-medium mt-1">
-          Your <span className="font-semibold text-[#8E25E3]">ProjexPro</span> dashboard shows you have 5 work orders scheduled today.
-        </p>
-        <p className="text-xs sm:text-sm text-gray-400 font-normal mt-1.5">
-          Friday, June 26, 2026.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 tracking-tight">
+            Hi, {firstName} 👋
+          </h1>
+          <p className="text-sm text-gray-700 font-medium mt-1">
+            Your <span className="font-semibold text-[#8E25E3]">ProjexPro</span> dashboard shows you have{" "}
+            <span className="font-bold text-[#8E25E3]">{assignedCount}</span> active work order{assignedCount === 1 ? "" : "s"}.
+          </p>
+          <p className="text-xs sm:text-sm text-gray-400 font-normal mt-1">
+            {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => refetchRequests()}
+          disabled={isRequestsFetching}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-2xs self-start sm:self-auto cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isRequestsFetching ? "animate-spin text-[#6B1294]" : "text-gray-500"}`} />
+          <span>{isRequestsFetching ? "Refreshing..." : "Refresh"}</span>
+        </button>
       </div>
 
-      {/* Top 4 Stats Cards Grid - Clickable Filter Tabs (Option 1: Strict Tab Filtering) */}
+      {/* Top 4 Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {stats.map((stat) => {
           const IconComp = stat.icon;
@@ -366,10 +332,11 @@ export default function ServiceProviderOverview(): React.ReactElement {
             <div
               key={stat.id}
               onClick={() => setActiveTabFilter(isSelected ? "all" : stat.tabKey)}
-              className={`bg-[#FFFFFF] border rounded-xl p-5 flex flex-col justify-between shadow-2xs transition-all cursor-pointer group relative ${isSelected
+              className={`bg-[#FFFFFF] border rounded-xl p-5 flex flex-col justify-between shadow-2xs transition-all cursor-pointer group relative ${
+                isSelected
                   ? "border-[#8E25E3] ring-2 ring-[#8E25E3]/30 bg-purple-50/20"
                   : "border-[#E5E7EB] hover:shadow-md hover:border-[#8E25E3]/40"
-                }`}
+              }`}
             >
               {isSelected && (
                 <span className="absolute top-2.5 right-3 text-[10px] font-bold uppercase tracking-wider text-[#8E25E3] bg-[#F0E6FC] px-2 py-0.5 rounded-full border border-[#8E25E3]/20">
@@ -422,7 +389,7 @@ export default function ServiceProviderOverview(): React.ReactElement {
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5 max-h-[640px]">
-            {/* Card 1: 2 Matched Jobs */}
+            {/* Card 1: Assigned Jobs */}
             <div className="bg-[#FFFFFF] border border-gray-200/90 rounded-2xl p-4 sm:p-4.5 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-full bg-[#F0E6FC] flex items-center justify-center shrink-0 mt-0.5">
@@ -430,10 +397,10 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-                    2 Matched Jobs
+                    {upcomingCount} Pending Work Orders
                   </h3>
                   <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
-                    Review matches for your service area
+                    Review and accept jobs assigned to you
                   </p>
                 </div>
               </div>
@@ -442,12 +409,12 @@ export default function ServiceProviderOverview(): React.ReactElement {
                   href="/services_provider/job_request"
                   className="w-full bg-[#6B1294] hover:bg-[#580e7d] text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-2xs block text-center transition-all active:scale-[0.99]"
                 >
-                  View Matched Jobs
+                  View Job Requests
                 </Link>
               </div>
             </div>
 
-            {/* Card 2: 1 Job Ready for Closeout */}
+            {/* Card 2: Jobs In Progress */}
             <div className="bg-[#FFFFFF] border border-gray-200/90 rounded-2xl p-4 sm:p-4.5 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-full bg-[#F0E6FC] flex items-center justify-center shrink-0 mt-0.5">
@@ -455,29 +422,24 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-                    1 Job Ready for Closeout
+                    {assignedCount} Active Work Orders
                   </h3>
+                  <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
+                    Update status or submit finished repairs
+                  </p>
                 </div>
               </div>
               <div className="mt-3.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const readyJob = jobRequests.find((j) => j.status === "In Progress") || jobRequests[0];
-                    if (readyJob) {
-                      setProgressModalJob(readyJob);
-                      setProgressValue(readyJob.progressPercent || 90);
-                      setSelectedProgressStatus("In Progress");
-                    }
-                  }}
-                  className="w-full bg-[#6B1294] hover:bg-[#580e7d] text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-2xs block text-center transition-all active:scale-[0.99] cursor-pointer"
+                <Link
+                  href="/services_provider/job_request"
+                  className="w-full bg-[#6B1294] hover:bg-[#580e7d] text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-2xs block text-center transition-all active:scale-[0.99]"
                 >
-                  Submit Completion
-                </button>
+                  Manage Active Jobs
+                </Link>
               </div>
             </div>
 
-            {/* Card 3: 1 Invoice Ready */}
+            {/* Card 3: Payouts */}
             <div className="bg-[#FFFFFF] border border-gray-200/90 rounded-2xl p-4 sm:p-4.5 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-full bg-[#F0E6FC] flex items-center justify-center shrink-0 mt-0.5">
@@ -485,8 +447,11 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-                    1 Invoice Ready
+                    ${totalEarnings.toFixed(2)} Total Earnings
                   </h3>
+                  <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
+                    Track contractor invoices and completed payments
+                  </p>
                 </div>
               </div>
               <div className="mt-3.5">
@@ -494,12 +459,12 @@ export default function ServiceProviderOverview(): React.ReactElement {
                   href="/services_provider/payment"
                   className="w-full bg-[#6B1294] hover:bg-[#580e7d] text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-2xs block text-center transition-all active:scale-[0.99]"
                 >
-                  Review Billing
+                  Review Earnings & Invoices
                 </Link>
               </div>
             </div>
 
-            {/* Card 4: Insurance document expires in 14 days */}
+            {/* Card 4: Profile & Documents */}
             <div className="bg-[#FFFFFF] border border-gray-200/90 rounded-2xl p-4 sm:p-4.5 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-full bg-[#F0E6FC] flex items-center justify-center shrink-0 mt-0.5">
@@ -507,8 +472,11 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-                    Insurance document expires in 14 days
+                    Business Profile & Licenses
                   </h3>
+                  <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
+                    Keep your license and insurance documents updated
+                  </p>
                 </div>
               </div>
               <div className="mt-3.5">
@@ -530,8 +498,8 @@ export default function ServiceProviderOverview(): React.ReactElement {
             <div>
               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 {activeTabFilter === "all" && "All Work Orders"}
-                {activeTabFilter === "assigned" && "Today&apos;s Assigned Work Orders"}
-                {activeTabFilter === "upcoming" && "Upcoming Work Orders"}
+                {activeTabFilter === "assigned" && "Active Work Orders"}
+                {activeTabFilter === "upcoming" && "Pending Acceptance"}
                 {activeTabFilter === "completed" && "Completed Work Orders"}
                 {activeTabFilter === "earnings" && "Paid / Earned Work Orders"}
                 <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -544,47 +512,51 @@ export default function ServiceProviderOverview(): React.ReactElement {
               <button
                 type="button"
                 onClick={() => setActiveTabFilter("all")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTabFilter === "all"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeTabFilter === "all"
                     ? "bg-[#8E25E3] text-white shadow-2xs"
                     : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                  }`}
+                }`}
               >
                 All
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTabFilter("assigned")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTabFilter === "assigned"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeTabFilter === "assigned"
                     ? "bg-[#8E25E3] text-white shadow-2xs"
                     : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                  }`}
+                }`}
               >
-                Today&apos;s (5)
+                Active ({assignedCount})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTabFilter("upcoming")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTabFilter === "upcoming"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeTabFilter === "upcoming"
                     ? "bg-[#8E25E3] text-white shadow-2xs"
                     : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                  }`}
+                }`}
               >
-                Upcoming (3)
+                Pending ({upcomingCount})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTabFilter("completed")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${activeTabFilter === "completed"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeTabFilter === "completed"
                     ? "bg-[#8E25E3] text-white shadow-2xs"
                     : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                  }`}
+                }`}
               >
-                Completed (2)
+                Completed ({completedCount})
               </button>
             </div>
           </div>
 
-          {/* Option 1 Filter Banner Notice if specific tab active */}
+          {/* Filter Notice Banner if specific tab active */}
           {activeTabFilter !== "all" && (
             <div className="mb-3.5 px-3.5 py-2 bg-purple-50 border border-purple-200/80 rounded-xl text-xs text-[#8E25E3] flex items-center justify-between">
               <span>
@@ -593,7 +565,7 @@ export default function ServiceProviderOverview(): React.ReactElement {
               <button
                 type="button"
                 onClick={() => setActiveTabFilter("all")}
-                className="underline hover:text-purple-900 font-medium"
+                className="underline hover:text-purple-900 font-medium cursor-pointer"
               >
                 Clear Filter
               </button>
@@ -602,164 +574,187 @@ export default function ServiceProviderOverview(): React.ReactElement {
 
           {/* Job Request Items List */}
           <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5 max-h-[580px]">
-            {filteredJobRequests.length === 0 ? (
+            {isRequestsLoading ? (
+              <div className="py-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-[#6B1294]" />
+                <span className="text-sm font-medium">Loading work orders...</span>
+              </div>
+            ) : filteredJobRequests.length === 0 ? (
               <div className="py-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 <p className="text-sm font-medium">No work orders match this tab category.</p>
                 <button
                   type="button"
                   onClick={() => setActiveTabFilter("all")}
-                  className="mt-2 text-xs font-bold text-[#8E25E3] underline"
+                  className="mt-2 text-xs font-bold text-[#8E25E3] underline cursor-pointer"
                 >
                   View all work orders
                 </button>
               </div>
             ) : (
-              filteredJobRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-gray-300 hover:shadow-2xs relative"
-                >
-                  {/* Left Side: Job Info + Scheduled Time */}
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      {req.scheduledTime && (
-                        <span className="text-xs font-extrabold text-[#6B1294] bg-purple-100 px-2 py-0.5 rounded-md">
-                          {req.scheduledTime}
+              filteredJobRequests.map((req) => {
+                const propertyName = getPropertyName(req.property);
+                const payout = req.finalPayout ?? req.basePayment ?? 0;
+
+                return (
+                  <div
+                    key={req._id}
+                    className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-gray-300 hover:shadow-2xs relative"
+                  >
+                    {/* Left Side: Job Info */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400 tracking-wider">
+                          {req.requestNo || req._id.slice(-6).toUpperCase()}
                         </span>
-                      )}
-                      <span className="text-xs font-bold text-gray-400 tracking-wider">
-                        {req.id}
-                      </span>
-                      <span className={`text-xs font-bold ${req.priorityColor}`}>
-                        {req.priority}
-                      </span>
+                        <span className="text-xs font-bold text-red-600">
+                          {req.priority}
+                        </span>
+                        <span className="text-xs font-bold text-gray-800">
+                          ${payout.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <h3 className="text-base font-bold text-gray-900 leading-tight truncate">
+                        {propertyName}
+                      </h3>
+
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 font-normal">
+                        <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="truncate">{req.issueTitle}</span>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="pt-1">
+                        <span
+                          className={`px-3 py-1 text-xs font-semibold rounded-full inline-block ${getStatusBadgeStyle(req.status)}`}
+                        >
+                          {req.status}
+                        </span>
+                      </div>
                     </div>
 
-                    <h3 className="text-base font-bold text-gray-900 leading-tight truncate">
-                      {req.title}
-                    </h3>
+                    {/* Right Side: Action Buttons */}
+                    <div className="flex items-start gap-1.5 shrink-0 self-end sm:self-center">
+                      <div className="flex flex-col gap-1.5 w-32 sm:w-36">
+                        {req.status === "Assigned" && (
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => handleAcceptJob(req._id)}
+                            className="w-full py-2 px-3 text-xs font-bold text-white bg-[#6B1294] hover:bg-[#580e7d] rounded-lg transition-all shadow-2xs cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center"
+                          >
+                            Accept Job
+                          </button>
+                        )}
 
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-normal">
-                      <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span>{req.category}</span>
-                    </div>
+                        {req.status === "Accepted" && (
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => handleStartJob(req._id)}
+                            className="w-full py-2 px-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-2xs cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center gap-1"
+                          >
+                            <Play className="w-3.5 h-3.5" />
+                            <span>Start Work</span>
+                          </button>
+                        )}
 
-                    {/* Status Badge placed directly below category */}
-                    <div className="pt-1">
-                      <span
-                        className={`px-3 py-1 text-xs font-semibold rounded-full inline-block ${req.statusStyle}`}
-                      >
-                        {req.status}
-                      </span>
-                    </div>
-                  </div>
+                        {req.status === "In Progress" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProgressModalJob(req);
+                              setProgressValue(50);
+                              setSelectedProgressStatus("In Progress");
+                            }}
+                            className="w-full py-2 px-3 text-xs font-bold text-white bg-[#6B1294] hover:bg-[#580e7d] rounded-lg transition-all shadow-2xs cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center"
+                          >
+                            Update Progress
+                          </button>
+                        )}
 
-                  {/* Right Side: Action Buttons */}
-                  <div className="flex items-start gap-1.5 shrink-0 self-end sm:self-center">
-                    <div className="flex flex-col gap-1.5 w-32 sm:w-36">
-                      {req.status === "In Progress" ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setProgressModalJob(req);
-                            setProgressValue(req.progressPercent || 50);
-                            setSelectedProgressStatus("In Progress");
-                          }}
-                          className="w-full py-2 px-3 text-xs font-bold text-white bg-[#6B1294] hover:bg-[#580e7d] rounded-lg transition-all shadow-2xs cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center"
+                          onClick={() => setSelectedJob(req)}
+                          className="w-full py-2 px-3 text-xs font-bold text-[#6B1294] bg-white hover:bg-purple-50/60 border border-[#6B1294]/40 rounded-lg transition-all cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center"
                         >
-                          Update Progress
+                          Open Job
                         </button>
-                      ) : (
+                      </div>
+
+                      {/* Three Dots Button */}
+                      <div className="relative">
                         <button
                           type="button"
-                          onClick={() => handleAcceptJob(req.id)}
-                          className="w-full py-2 px-3 text-xs font-bold text-white bg-[#6B1294] hover:bg-[#580e7d] rounded-lg transition-all shadow-2xs cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center"
+                          onClick={() =>
+                            setActiveMenuId(activeMenuId === req._id ? null : req._id)
+                          }
+                          className="px-2.5 h-8 bg-[#E2E2E5] hover:bg-gray-300 text-gray-700 rounded-lg transition-colors cursor-pointer flex items-center justify-center shrink-0"
                         >
-                          Accept Job
+                          <MoreHorizontal className="w-4 h-4" />
                         </button>
-                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => setSelectedJob(req)}
-                        className="w-full py-2 px-3 text-xs font-bold text-[#6B1294] bg-white hover:bg-purple-50/60 border border-[#6B1294]/40 rounded-lg transition-all cursor-pointer text-center active:scale-95 whitespace-nowrap h-8 flex items-center justify-center"
-                      >
-                        Open Job
-                      </button>
-                    </div>
+                        {/* Dropdown Popup Menu */}
+                        {activeMenuId === req._id && (
+                          <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
+                            {/* 1. View Work Order Details */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedJob(req);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left cursor-pointer"
+                            >
+                              <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                              <span>View Work Order Details</span>
+                            </button>
 
-                    {/* Three Dots Button */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveMenuId(activeMenuId === req.id ? null : req.id)
-                        }
-                        className="px-2.5 h-8 bg-[#E2E2E5] hover:bg-gray-300 text-gray-700 rounded-lg transition-colors cursor-pointer flex items-center justify-center shrink-0"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                            {/* 2. Discuss This Work Order */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDiscussionJob(req);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left cursor-pointer"
+                            >
+                              <MessageSquare className="w-4 h-4 text-purple-600 shrink-0" />
+                              <span>Discuss This Work Order</span>
+                            </button>
 
-                      {/* Dropdown Popup Menu - Updated options per client requirements */}
-                      {activeMenuId === req.id && (
-                        <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
-                          {/* 1. View Work Order Details */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedJob(req);
-                              setActiveMenuId(null);
-                            }}
-                            className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left"
-                          >
-                            <Info className="w-4 h-4 text-blue-600 shrink-0" />
-                            <span>View Work Order Details</span>
-                          </button>
+                            {/* 3. Submit Change Request */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChangeRequestJob(req);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left cursor-pointer"
+                            >
+                              <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>Submit Change Request</span>
+                            </button>
 
-                          {/* 2. Discuss This Work Order */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDiscussionJob(req);
-                              setActiveMenuId(null);
-                            }}
-                            className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left"
-                          >
-                            <MessageSquare className="w-4 h-4 text-purple-600 shrink-0" />
-                            <span>Discuss This Work Order</span>
-                          </button>
-
-                          {/* 3. Submit Change Request */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setChangeRequestJob(req);
-                              setActiveMenuId(null);
-                            }}
-                            className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left"
-                          >
-                            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span>Submit Change Request</span>
-                          </button>
-
-                          {/* 4. Request To Reassign */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReassignJob(req);
-                              setActiveMenuId(null);
-                            }}
-                            className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left"
-                          >
-                            <ArrowLeftRight className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span>Request To Reassign</span>
-                          </button>
-                        </div>
-                      )}
+                            {/* 4. Request To Reassign / Decline */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReassignJob(req);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors text-left cursor-pointer"
+                            >
+                              <ArrowLeftRight className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>Decline / Reassign</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -772,13 +767,13 @@ export default function ServiceProviderOverview(): React.ReactElement {
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-bold text-gray-400 tracking-wider block">
-                  {selectedJob.id}
+                  {selectedJob.requestNo || selectedJob._id}
                 </span>
                 <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {selectedJob.title}
+                  {getPropertyName(selectedJob.property)}
                 </h2>
                 <p className="text-xs text-gray-500 font-normal mt-0.5">
-                  Posted By: {selectedJob.postedBy}
+                  Posted By: {getPMName(selectedJob.user)}
                 </p>
               </div>
 
@@ -792,85 +787,67 @@ export default function ServiceProviderOverview(): React.ReactElement {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className={`px-3 py-1 text-xs font-bold rounded-full ${selectedJob.statusStyle}`}>
+              <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusBadgeStyle(selectedJob.status)}`}>
                 {selectedJob.status}
               </span>
-              <span className={`text-xs font-bold ${selectedJob.priorityColor}`}>
+              <span className="text-xs font-bold text-red-600">
                 Priority: {selectedJob.priority}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-                <span className="text-xs text-gray-400 font-normal block">Job Category</span>
-                <span className="text-sm font-bold text-gray-900 mt-1 block">{selectedJob.category}</span>
+                <span className="text-xs text-gray-400 font-normal block">Issue Title</span>
+                <span className="text-sm font-bold text-gray-900 mt-1 block truncate">
+                  {selectedJob.issueTitle}
+                </span>
               </div>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-                <span className="text-xs text-gray-400 font-normal block">Payout Fee</span>
-                <span className="text-sm font-bold text-gray-900 mt-1 block">{selectedJob.payout}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-                <span className="text-xs text-gray-400 font-normal block">Unit / Suite</span>
-                <span className="text-sm font-bold text-gray-900 mt-1 block">{selectedJob.unit}</span>
-              </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-                <span className="text-xs text-gray-400 font-normal block">Scheduled Date</span>
-                <span className="text-sm font-bold text-gray-900 mt-1 block">{selectedJob.scheduledDate} {selectedJob.scheduledTime ? `(${selectedJob.scheduledTime})` : ""}</span>
+                <span className="text-xs text-gray-400 font-normal block">Total Payout</span>
+                <span className="text-sm font-bold text-gray-900 mt-1 block">
+                  ${(selectedJob.finalPayout ?? selectedJob.basePayment ?? 0).toFixed(2)}
+                </span>
               </div>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-              <span className="text-xs text-gray-400 font-normal block">Job Site Address</span>
-              <div className="flex items-center gap-1.5 text-sm font-bold text-gray-900 mt-1">
-                <MapPin className="w-4 h-4 text-[#6B1294] shrink-0" />
-                <span>{selectedJob.address}</span>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-              <span className="text-xs text-gray-400 font-normal block">Scope of Work</span>
+              <span className="text-xs text-gray-400 font-normal block">Scope of Work & Description</span>
               <p className="text-xs text-gray-800 font-normal mt-1 leading-relaxed">
-                {selectedJob.scopeDescription}
+                {selectedJob.description || selectedJob.issueTitle}
               </p>
             </div>
 
-            {selectedJob.notes && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-                <span className="text-xs text-gray-400 font-normal block">Site Notes</span>
-                <p className="text-xs text-gray-800 font-normal mt-1">{selectedJob.notes}</p>
-              </div>
-            )}
-
-            {selectedJob.images && selectedJob.images.length > 0 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
-                <span className="text-xs text-gray-400 font-normal block mb-2">Job Photos</span>
-                <div className="flex items-center gap-2.5 overflow-x-auto">
-                  {selectedJob.images.map((img, idx) => (
-                    <img
-                      key={idx}
-                      src={img}
-                      alt="Job attachment"
-                      className="w-24 h-16 object-cover rounded-lg border border-gray-300 shrink-0"
-                    />
-                  ))}
-                </div>
+            {selectedJob.rejectionReason && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3.5 text-xs text-red-800">
+                <strong>Decline Reason:</strong> {selectedJob.rejectionReason}
               </div>
             )}
 
             <div className="flex items-center gap-3 pt-3">
-              {selectedJob.status !== "In Progress" && selectedJob.status !== "Completed" && (
+              {selectedJob.status === "Assigned" && (
                 <button
                   type="button"
+                  disabled={isUpdating}
                   onClick={() => {
-                    handleAcceptJob(selectedJob.id);
+                    handleAcceptJob(selectedJob._id);
                     setSelectedJob(null);
                   }}
                   className="flex-1 bg-[#6B1294] hover:bg-[#580e7d] text-white font-bold py-3 px-4 rounded-lg text-sm transition-colors cursor-pointer"
                 >
                   Accept Work Order
+                </button>
+              )}
+              {selectedJob.status === "Accepted" && (
+                <button
+                  type="button"
+                  disabled={isUpdating}
+                  onClick={() => {
+                    handleStartJob(selectedJob._id);
+                    setSelectedJob(null);
+                  }}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg text-sm transition-colors cursor-pointer"
+                >
+                  Start Work Order
                 </button>
               )}
               <button
@@ -895,7 +872,7 @@ export default function ServiceProviderOverview(): React.ReactElement {
                   Update Work Progress
                 </span>
                 <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {progressModalJob.title} ({progressModalJob.id})
+                  {getPropertyName(progressModalJob.property)} ({progressModalJob.requestNo})
                 </h2>
               </div>
               <button
@@ -915,10 +892,11 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 <button
                   type="button"
                   onClick={() => setSelectedProgressStatus("In Progress")}
-                  className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${selectedProgressStatus === "In Progress"
+                  className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    selectedProgressStatus === "In Progress"
                       ? "bg-blue-50 border-blue-500 text-blue-800"
                       : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
-                    }`}
+                  }`}
                 >
                   In Progress
                 </button>
@@ -928,30 +906,15 @@ export default function ServiceProviderOverview(): React.ReactElement {
                     setSelectedProgressStatus("Completed");
                     setProgressValue(100);
                   }}
-                  className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${selectedProgressStatus === "Completed"
+                  className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    selectedProgressStatus === "Completed"
                       ? "bg-emerald-50 border-emerald-500 text-emerald-800"
                       : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
-                    }`}
+                  }`}
                 >
-                  Mark as Completed
+                  Submit for PM Approval
                 </button>
               </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="text-xs font-bold text-gray-700">Completion Percentage</label>
-                <span className="text-xs font-bold text-[#6B1294]">{progressValue}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={progressValue}
-                onChange={(e) => setProgressValue(Number(e.target.value))}
-                className="w-full accent-[#6B1294] cursor-pointer"
-              />
             </div>
 
             <div>
@@ -970,10 +933,11 @@ export default function ServiceProviderOverview(): React.ReactElement {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
+                disabled={isUpdating}
                 onClick={handleSaveProgress}
                 className="flex-1 bg-[#6B1294] hover:bg-[#580e7d] text-white font-bold py-3 px-4 rounded-lg text-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
-                <Check className="w-4 h-4" />
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 <span>Save Progress</span>
               </button>
               <button
@@ -998,10 +962,10 @@ export default function ServiceProviderOverview(): React.ReactElement {
                   Discuss This Work Order
                 </span>
                 <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {discussionJob.title} ({discussionJob.id})
+                  {getPropertyName(discussionJob.property)} ({discussionJob.requestNo})
                 </h2>
                 <p className="text-xs text-gray-500 font-normal mt-0.5">
-                  To: {discussionJob.postedBy}
+                  To: {getPMName(discussionJob.user)}
                 </p>
               </div>
               <button
@@ -1057,7 +1021,7 @@ export default function ServiceProviderOverview(): React.ReactElement {
                   Submit Change Request
                 </span>
                 <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {changeRequestJob.title} ({changeRequestJob.id})
+                  {getPropertyName(changeRequestJob.property)} ({changeRequestJob.requestNo})
                 </h2>
               </div>
               <button
@@ -1118,17 +1082,17 @@ export default function ServiceProviderOverview(): React.ReactElement {
         </div>
       )}
 
-      {/* 5. REQUEST TO REASSIGN MODAL */}
+      {/* 5. REQUEST TO REASSIGN / DECLINE MODAL */}
       {reassignJob && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-[#FFFFFF] rounded-xl p-6 sm:p-7 sm:max-w-lg w-full shadow-2xl relative space-y-4 border border-[#E5E7EB]">
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-bold text-amber-600 tracking-wider block">
-                  Request To Reassign
+                  Decline & Request Reassignment
                 </span>
                 <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {reassignJob.title} ({reassignJob.id})
+                  {getPropertyName(reassignJob.property)} ({reassignJob.requestNo})
                 </h2>
               </div>
               <button
@@ -1164,7 +1128,7 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 rows={3}
                 value={reassignNotes}
                 onChange={(e) => setReassignNotes(e.target.value)}
-                placeholder="Explain why this job should be reassigned to another Service Pro..."
+                placeholder="Explain why this job should be reassigned..."
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:border-[#6B1294] outline-none transition-all"
               />
             </div>
@@ -1172,10 +1136,12 @@ export default function ServiceProviderOverview(): React.ReactElement {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
+                disabled={isUpdating}
                 onClick={handleSendReassignment}
-                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-lg text-sm transition-colors cursor-pointer"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-lg text-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
-                Submit Reassignment
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <span>Submit Reassignment</span>
               </button>
               <button
                 type="button"
@@ -1191,4 +1157,3 @@ export default function ServiceProviderOverview(): React.ReactElement {
     </div>
   );
 }
-

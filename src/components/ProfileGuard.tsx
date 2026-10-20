@@ -3,60 +3,85 @@
 import { useRouter, usePathname } from "next/navigation";
 import { ReactNode, useEffect } from "react";
 import { useMyProfileQuery } from "../features/profile/profileApi";
-import { getRedirectUrlForProfile } from "../utils/authRedirect";
+import { getRedirectUrlForProfile, isUserAllowedInDashboard } from "../utils/authRedirect";
 
 interface ProfileGuardProps {
   children: ReactNode;
 }
 
 /**
- * ProfileGuard checks the user's profileCompletionPercentage.
- * If the profile is incomplete (< 100%), the user is redirected
- * to the appropriate verification page based on their role.
- * This prevents users from bypassing the verification flow
- * by manually navigating to dashboard URLs.
+ * ProfileGuard protects all dashboard routes under (main).
+ * It strictly blocks users who are unapproved or (for Property Managers) unsubscribed.
+ * If not allowed, users are immediately redirected to the appropriate verification page.
  */
 export default function ProfileGuard({ children }: ProfileGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { data, isLoading, isError } = useMyProfileQuery(undefined);
 
+  const profileData = data?.data || data;
+  const userRole = profileData?.role;
+  const isAdmin = userRole === "admin" || userRole === "super_admin";
+  const isServiceProvider = userRole === "service_provider" || userRole === "provider";
+  const isAllowed = profileData ? isUserAllowedInDashboard(profileData) : false;
+
   useEffect(() => {
-    if (isLoading || isError) return;
+    if (isLoading) return;
 
-    const profileData = data?.data || data;
-    const completionPercentage = Number(profileData?.profileCompletionPercentage ?? 0);
+    if (isError) {
+      router.replace("/auth/login");
+      return;
+    }
 
-    if (completionPercentage < 100) {
+    if (!profileData) return;
+
+    // Block unapproved or incomplete or unsubscribed users from dashboard
+    if (!isAllowed) {
       const redirectUrl = getRedirectUrlForProfile(profileData);
+      router.replace(redirectUrl);
+      return;
+    }
 
-      // Avoid redirect loop — only redirect if we're not already on the verification page
-      if (pathname !== redirectUrl) {
-        router.replace(redirectUrl);
+    // Role-based routing boundary within dashboard
+    if (!isAdmin) {
+      if (isServiceProvider && !pathname.startsWith("/services_provider")) {
+        router.replace("/services_provider/overview");
+      } else if (!isServiceProvider && pathname.startsWith("/services_provider")) {
+        router.replace("/");
       }
     }
-  }, [data, isLoading, isError, router, pathname]);
+  }, [isLoading, isError, profileData, isAllowed, isAdmin, isServiceProvider, pathname, router]);
 
-  // Show nothing while loading profile to prevent flash of dashboard content
+  // Show loading spinner while profile is being checked
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-[#F8F9FA]">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#6B1294]"></div>
       </div>
     );
   }
 
-  // If profile is incomplete, don't render dashboard children (redirect will happen via useEffect)
-  if (!isError) {
-    const profileData = data?.data || data;
-    const completionPercentage = Number(profileData?.profileCompletionPercentage ?? 0);
-    if (completionPercentage < 100) {
-      const redirectUrl = getRedirectUrlForProfile(profileData);
-      if (pathname !== redirectUrl) {
-        return null;
-      }
+  // Prevent flash of dashboard content if unauthenticated or error
+  if (isError || !profileData) {
+    return null;
+  }
+
+  // If user is not allowed into dashboard, render nothing while redirecting
+  if (!isAllowed) {
+    return null;
+  }
+
+  // Prevent flash if user is on the wrong dashboard for their role
+  if (!isAdmin) {
+    if (isServiceProvider && !pathname.startsWith("/services_provider")) {
+      return null;
+    }
+    if (!isServiceProvider && pathname.startsWith("/services_provider")) {
+      return null;
     }
   }
 
   return <>{children}</>;
 }
+
+

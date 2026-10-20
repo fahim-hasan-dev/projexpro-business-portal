@@ -7,7 +7,7 @@ import { ServiceRequest, StatusType } from "@/types/serviceRequest";
 interface ServiceRequestTableProps {
   requests: ServiceRequest[];
   onNavigateToTrack: (id: string) => void;
-  onStatusChange: (id: string, newStatus: StatusType, newStage: number, stageText: string) => void;
+  onStatusChange?: (id: string, newStatus: StatusType, newStage: number, stageText: string) => void;
 }
 
 export default function ServiceRequestTable({

@@ -23,7 +23,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
 import { removeToken } from "@/utils/storage";
+import { logout } from "@/features/auth/authSlice";
+import { baseApi } from "@/utils/apiBaseQuery";
 
 function ProjexProLogo() {
   return (
@@ -67,6 +70,8 @@ export default function OptimusSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const dispatch = useDispatch();
+
   const isServiceProvider = pathname.startsWith("/services_provider");
   const sidebars = isServiceProvider ? serviceProviderSidebars : defaultSidebars;
 
@@ -79,7 +84,8 @@ export default function OptimusSidebar() {
 
   const confirmLogout = () => {
     removeToken();
-    document.cookie = "cat-admin-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    dispatch(logout());
+    dispatch(baseApi.util.resetApiState());
     toast.success("Logged out successfully");
     setShowLogoutModal(false);
     router.push("/auth/login");

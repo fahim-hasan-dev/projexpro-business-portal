@@ -2,10 +2,11 @@
 
 import React from "react";
 import Image from "next/image";
-import { Check, Download, X } from "lucide-react";
+import { Check, Download, X, Loader2 } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import InvoiceStatusBadge from "./InvoiceStatusBadge";
 import toast from "react-hot-toast";
+import { usePayInvoiceMutation } from "@/features/invoice/invoiceApi";
 
 interface InvoiceDetailModalProps {
   invoice: Invoice | null;
@@ -18,6 +19,8 @@ export default function InvoiceDetailModal({
   onClose,
   onPaySuccess,
 }: InvoiceDetailModalProps) {
+  const [payInvoice, { isLoading: isPaying }] = usePayInvoiceMutation();
+
   if (!invoice) return null;
 
   // Currency helper
@@ -30,20 +33,46 @@ export default function InvoiceDetailModal({
     }).format(val);
   };
 
-  const handlePayNow = () => {
-    if (onPaySuccess) {
-      onPaySuccess(invoice.id);
+  const handlePayNow = async () => {
+    const targetId = invoice._id || invoice.id;
+    if (!targetId) return;
+
+    try {
+      const res = await payInvoice(targetId).unwrap();
+      if (res.data?.checkoutUrl) {
+        toast.loading("Redirecting to Stripe secure checkout...");
+        onPaySuccess?.(targetId);
+        window.location.href = res.data.checkoutUrl;
+      } else {
+        toast.error("Checkout session URL not received");
+      }
+    } catch (err: any) {
+      console.error("Pay invoice error:", err);
+      const msg = err?.data?.message || err?.message || "Failed to initiate payment";
+      toast.error(msg);
     }
-    toast.success(`Payment for ${invoice.id} processed successfully!`);
-    onClose();
   };
 
   const handleDownloadPDF = () => {
-    toast.success(`Downloading PDF for ${invoice.id}...`);
+    window.print();
   };
 
   const isPaid = invoice.status === "Paid";
-  const isDeposit = invoice.status === "Deposit" || invoice.status === "Pending";
+  const isDeposit = invoice.status === "Deposit" || invoice.status === "Pending" || invoice.status === "Unpaid";
+
+  const items =
+    invoice.items && invoice.items.length > 0
+      ? invoice.items
+      : invoice.lineItems && invoice.lineItems.length > 0
+      ? invoice.lineItems
+      : [
+          {
+            description: invoice.description || "Service Request Maintenance Work",
+            qty: 1,
+            unitPrice: invoice.totalAmount || 0,
+            amount: invoice.totalAmount || 0,
+          },
+        ];
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
@@ -72,7 +101,7 @@ export default function InvoiceDetailModal({
 
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-              {invoice.id}
+              {invoice.invoiceNo || invoice.id}
             </h2>
             <InvoiceStatusBadge status={invoice.status} />
           </div>
@@ -96,28 +125,28 @@ export default function InvoiceDetailModal({
 
             <div>
               <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                {invoice.accountId ? "ACCOUNT ID" : "CONTRACTOR"}
+                CONTRACTOR / PROVIDER
               </span>
               <span className="font-semibold text-gray-900 mt-0.5 block">
-                {invoice.accountId || invoice.serviceProvider}
+                {invoice.serviceProvider}
               </span>
             </div>
 
             <div>
               <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                {invoice.serviceRequestTitle ? "JOB ID" : "ISSUE DATE"}
+                JOB ID
               </span>
               <span className="font-semibold text-gray-900 mt-0.5 block">
-                {invoice.serviceRequestTitle ? invoice.id : (invoice.issueDate || "Jun 22, 2026")}
+                {invoice.accountId || invoice.id}
               </span>
             </div>
 
             <div>
               <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                {invoice.serviceRequestTitle ? "SERVICE REQUEST" : "START DATE"}
+                DUE DATE
               </span>
               <span className="font-semibold text-gray-900 mt-0.5 block">
-                {invoice.serviceRequestTitle || (invoice.startDate || "Jul 7, 2026")}
+                {invoice.dueDate || "30 Days from Issue"}
               </span>
             </div>
 
@@ -132,24 +161,13 @@ export default function InvoiceDetailModal({
               </div>
             )}
 
-            {invoice.dueDate && (
+            {invoice.issueDate && (
               <div>
                 <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                  DUE DATE
+                  ISSUE DATE
                 </span>
                 <span className="font-semibold text-gray-900 mt-0.5 block">
-                  {invoice.dueDate}
-                </span>
-              </div>
-            )}
-
-            {isPaid && invoice.finalInvoiceDate && (
-              <div>
-                <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                  FINAL INVOICE DATE
-                </span>
-                <span className="font-semibold text-gray-900 mt-0.5 block">
-                  {invoice.finalInvoiceDate}
+                  {invoice.issueDate}
                 </span>
               </div>
             )}
@@ -167,11 +185,8 @@ export default function InvoiceDetailModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-300/40 text-gray-800">
-                {(invoice.lineItems || [
-                  { id: "1", description: "Labour (8 hrs)", qty: 8, unitPrice: 85, amount: 680 },
-                  { id: "2", description: "Materials", qty: 1, unitPrice: 520, amount: 520 },
-                ]).map((item) => (
-                  <tr key={item.id}>
+                {items.map((item, idx) => (
+                  <tr key={idx}>
                     <td className="py-2.5 font-medium">{item.description}</td>
                     <td className="py-2.5 text-center">{item.qty}</td>
                     <td className="py-2.5 text-right">{fmt(item.unitPrice)}</td>
@@ -186,43 +201,35 @@ export default function InvoiceDetailModal({
           <div className="space-y-2 text-xs sm:text-sm text-gray-600 border-b border-gray-200 pb-4">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span className="font-semibold text-gray-900">{fmt(invoice.subtotal || 1200)}</span>
+              <span className="font-semibold text-gray-900">
+                {fmt(invoice.subtotal !== undefined ? invoice.subtotal : invoice.totalAmount)}
+              </span>
             </div>
             {invoice.tax !== undefined && (
               <div className="flex justify-between">
-                <span>Tax (10%)</span>
+                <span>Tax</span>
                 <span className="font-semibold text-gray-900">{fmt(invoice.tax)}</span>
               </div>
             )}
-            {invoice.discount && invoice.discount > 0 ? (
-              <div className="flex justify-between text-gray-500">
-                <span>Discount Applied</span>
-                <span>{fmt(invoice.discount)}</span>
+            <div className="flex justify-between">
+              <span>Total Amount</span>
+              <span className="font-semibold text-gray-900">{fmt(invoice.totalAmount)}</span>
+            </div>
+            {invoice.deposit ? (
+              <div className="flex justify-between text-emerald-600 font-medium">
+                <span>Deposit / Paid</span>
+                <span>-{fmt(invoice.deposit)}</span>
               </div>
             ) : null}
-            {!isPaid && (
-              <div className="flex justify-between">
-                <span>Total Amount</span>
-                <span className="font-semibold text-gray-900">{fmt(invoice.totalAmount)}</span>
-              </div>
-            )}
           </div>
 
           {/* Highlighted Big Amount */}
           <div className="flex items-center justify-between pt-1">
             <span className="text-base sm:text-lg font-bold text-gray-900">
-              {isPaid
-                ? "Total Paid"
-                : isDeposit
-                  ? "Deposit Amount"
-                  : "Final Balance Due"}
+              {isPaid ? "Total Paid" : "Balance Due"}
             </span>
             <span className="text-2xl sm:text-3xl font-medium text-[#7C3AED]">
-              {isPaid
-                ? fmt(invoice.totalAmount)
-                : isDeposit
-                  ? fmt(invoice.depositAmountRequired || 820)
-                  : fmt(invoice.finalBalanceDue || invoice.totalDue)}
+              {isPaid ? fmt(invoice.totalAmount) : fmt(invoice.totalDue)}
             </span>
           </div>
 
@@ -231,29 +238,36 @@ export default function InvoiceDetailModal({
             <button
               type="button"
               onClick={handleDownloadPDF}
-              className={`py-3.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg text-xs sm:text-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${isPaid ? "w-full" : "flex-1"
-                }`}
+              className={`py-3.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg text-xs sm:text-sm transition-colors cursor-pointer flex items-center justify-center gap-2 ${
+                isPaid ? "w-full" : "flex-1"
+              }`}
             >
               <Download className="w-4 h-4 text-gray-600" />
-              <span>Download PDF</span>
+              <span>Print / Download PDF</span>
             </button>
 
             {!isPaid && (
               <button
                 type="button"
                 onClick={handlePayNow}
-                className="flex-1 py-3.5 px-4 bg-[#10B981] hover:bg-[#059669] text-white font-semibold rounded-lg text-xs sm:text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                disabled={isPaying}
+                className="flex-1 py-3.5 px-4 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 text-white font-semibold rounded-lg text-xs sm:text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Pay Now</span>
+                {isPaying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 stroke-[3]" />
+                )}
+                <span>{isPaying ? "Processing..." : "Pay Now via Stripe"}</span>
               </button>
             )}
           </div>
 
           {/* Payment Terms Notice */}
-          {isDeposit && (
+          {!isPaid && (
             <p className="text-[11px] text-gray-400 font-normal leading-relaxed text-center pt-1">
-              <span className="font-semibold text-gray-600">Payment Terms:</span> Invoices not manually approved or rejected within 7 days of submission will automatically approve and schedule for payment.
+              <span className="font-semibold text-gray-600">Payment Security:</span> Powered by Stripe.
+              Your card and billing details are protected with bank-level encryption.
             </p>
           )}
         </div>

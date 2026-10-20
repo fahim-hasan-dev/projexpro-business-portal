@@ -8,6 +8,7 @@ interface DeclineJobModalProps {
   jobId: string;
   onClose: () => void;
   onSubmitDecline: (reason: string) => void;
+  isLoading?: boolean;
 }
 
 export default function DeclineJobModal({
@@ -15,6 +16,7 @@ export default function DeclineJobModal({
   jobId,
   onClose,
   onSubmitDecline,
+  isLoading = false,
 }: DeclineJobModalProps) {
   const [reason, setReason] = useState("");
   const [selectedQuickReason, setSelectedQuickReason] = useState("");
@@ -128,10 +130,10 @@ export default function DeclineJobModal({
             </button>
             <button
               type="submit"
-              disabled={!reason.trim()}
+              disabled={!reason.trim() || isLoading}
               className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer shadow-xs text-center"
             >
-              Submit Decline Request
+              {isLoading ? "Submitting..." : "Submit Decline Request"}
             </button>
           </div>
         </form>

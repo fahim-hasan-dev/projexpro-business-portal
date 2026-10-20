@@ -1,15 +1,6 @@
-export const saveToken = (token) => {
-  localStorage.setItem("catAdmin", token);
-};
+import { saveToken, getToken, removeToken } from "../../utils/storage";
 
-export const getToken = () => {
-  return localStorage.getItem("catAdmin");
-};
-
-export const removeToken = () => {
-  localStorage.removeItem("catAdmin");
-  localStorage.removeItem("adminLoginId");
-};
+export { saveToken, getToken, removeToken };
 
 export const isAuthenticated = () => {
   return !!getToken();
