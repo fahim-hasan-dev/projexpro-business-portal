@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   DollarSign,
   Clock,
@@ -11,7 +11,8 @@ import {
   Download,
   X,
   Building,
-  Lock,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -21,24 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface PaymentHistoryItem {
-  paymentId: string;
-  jobId: string;
-  propertyName: string;
-  paymentDate: string;
-  amount: string;
-  status: "Paid" | "Unpaid" | "Processing";
-}
+import { useGetAllServiceRequestsQuery } from "@/features/serviceRequest/serviceRequestApi";
+import { IServiceRequest } from "@/types/serviceRequest";
 
 export default function ServiceProviderPaymentPage(): React.ReactElement {
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
 
+  // Bank Accounts state
   const [bankAccounts, setBankAccounts] = useState([
     {
       id: "1",
       bankName: "Chase Bank",
-      accountHolder: "James Wilson",
+      accountHolder: "Provider Payout Account",
       accountType: "Checking",
       last4: "4892",
       routingLast4: "0142",
@@ -54,51 +49,111 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
   const [newConfirmAccountNumber, setNewConfirmAccountNumber] = useState("");
   const [modalErrors, setModalErrors] = useState<Record<string, string>>({});
 
-  const paymentHistory: PaymentHistoryItem[] = [
-    {
-      paymentId: "PAY-001",
-      jobId: "JOB-003",
-      propertyName: "Oakwood Villas",
-      paymentDate: "Jun 24, 2026",
-      amount: "$340",
-      status: "Paid",
-    },
-    {
-      paymentId: "PAY-002",
-      jobId: "JOB-007",
-      propertyName: "Elmwood Estates",
-      paymentDate: "Jun 25, 2026",
-      amount: "$480",
-      status: "Paid",
-    },
-    {
-      paymentId: "PAY-003",
-      jobId: "JOB-001",
-      propertyName: "Maple Heights Apt",
-      paymentDate: "Jun 26, 2026",
-      amount: "$270",
-      status: "Unpaid",
-    },
-    {
-      paymentId: "PAY-004",
-      jobId: "JOB-006",
-      propertyName: "Harbor View Lofts",
-      paymentDate: "Jun 26, 2026",
-      amount: "$960",
-      status: "Processing",
-    },
-    {
-      paymentId: "PAY-005",
-      jobId: "JOB-002",
-      propertyName: "Riverside Condos",
-      paymentDate: "Jun 23, 2026",
-      amount: "$180",
-      status: "Paid",
-    },
-  ];
+  // Query service requests assigned to the provider
+  const { data: responseData, isLoading, isFetching, refetch } = useGetAllServiceRequestsQuery();
+
+  const requests: IServiceRequest[] = useMemo(() => {
+    if (!responseData?.data) return [];
+    if (Array.isArray(responseData.data.requests)) {
+      return responseData.data.requests;
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    return [];
+  }, [responseData]);
+
+  // Calculations
+  const completedJobs = useMemo(() => {
+    return requests.filter((r) => r.status === "Completed");
+  }, [requests]);
+
+  const pendingApprovalJobs = useMemo(() => {
+    return requests.filter((r) => r.status === "Pending Approval");
+  }, [requests]);
+
+  const totalEarnings = useMemo(() => {
+    return completedJobs.reduce((sum, r) => sum + (r.finalPayout ?? r.basePayment ?? 0), 0);
+  }, [completedJobs]);
+
+  const pendingPayouts = useMemo(() => {
+    return completedJobs
+      .filter((r) => !r.isPaid)
+      .reduce((sum, r) => sum + (r.finalPayout ?? r.basePayment ?? 0), 0);
+  }, [completedJobs]);
+
+  const openInvoicesAmount = useMemo(() => {
+    return pendingApprovalJobs.reduce((sum, r) => sum + (r.finalPayout ?? r.basePayment ?? 0), 0);
+  }, [pendingApprovalJobs]);
+
+  // Payment rows for table
+  const paymentRows = useMemo(() => {
+    // Show completed and pending approval requests
+    const relevantJobs = requests.filter(
+      (r) => r.status === "Completed" || r.status === "Pending Approval"
+    );
+
+    return relevantJobs.map((job) => {
+      const propertyName =
+        typeof job.property === "object" && job.property
+          ? job.property.title || job.property.name || "Property"
+          : "Property";
+
+      const amount = (job.finalPayout ?? job.basePayment ?? 0).toFixed(2);
+      const dateStr = job.updatedAt
+        ? new Date(job.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : "Recent";
+
+      let status: "Paid" | "Unpaid" | "Processing" = "Processing";
+      if (job.isPaid) {
+        status = "Paid";
+      } else if (job.status === "Pending Approval") {
+        status = "Unpaid";
+      } else {
+        status = "Processing";
+      }
+
+      const invoiceNo =
+        typeof job.invoice === "object" && job.invoice?.invoiceNo
+          ? job.invoice.invoiceNo
+          : `INV-${job._id.slice(-6).toUpperCase()}`;
+
+      return {
+        paymentId: invoiceNo,
+        jobId: job.requestNo || job._id.slice(-6).toUpperCase(),
+        propertyName,
+        paymentDate: dateStr,
+        amount: `$${amount}`,
+        status,
+      };
+    });
+  }, [requests]);
 
   const handleExport = () => {
-    toast.success("Downloading payment history export CSV...");
+    if (paymentRows.length === 0) {
+      toast.error("No payment history to export.");
+      return;
+    }
+    const headers = "Payment ID,Job ID,Property Name,Payment Date,Amount,Status\n";
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      headers +
+      paymentRows
+        .map(
+          (r) =>
+            `"${r.paymentId}","${r.jobId}","${r.propertyName}","${r.paymentDate}","${r.amount}","${r.status}"`
+        )
+        .join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `payment_history_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Payment history CSV exported successfully!");
   };
 
   const handleAddAccountSubmit = (e: React.FormEvent) => {
@@ -145,7 +200,7 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
     setIsAddAccountModalOpen(false);
   };
 
-  const getStatusBadge = (status: PaymentHistoryItem["status"]) => {
+  const getStatusBadge = (status: "Paid" | "Unpaid" | "Processing") => {
     switch (status) {
       case "Paid":
         return (
@@ -172,13 +227,25 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
   return (
     <div className="space-y-6 pb-10">
       {/* Header Section */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-          Invoices & Payments
-        </h1>
-        <p className="text-xs sm:text-sm text-gray-500 font-normal mt-1">
-          Track your earnings, monitor your pending payouts, and see exactly when your money will arrive.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Invoices & Payments
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 font-normal mt-1">
+            Track your earnings, monitor your pending payouts, and view invoice status for completed jobs.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-2xs self-start sm:self-auto cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-[#6B1294]" : "text-gray-500"}`} />
+          <span>{isFetching ? "Refreshing..." : "Refresh"}</span>
+        </button>
       </div>
 
       {/* Top 3 Summary Cards Row */}
@@ -195,15 +262,15 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
           </div>
           <div className="mt-3">
             <div className="text-3xl sm:text-4xl font-medium tracking-tight">
-              $1,000
+              ${totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-white/80 font-normal mt-2">
-              YTD (Year-to-Date)
+              From {completedJobs.length} completed work orders
             </p>
           </div>
         </div>
 
-        {/* Card 2: Unpaid Payouts */}
+        {/* Card 2: Pending Payouts */}
         <div className="bg-yellow-500 rounded-lg p-6 text-white shadow-sm flex flex-col justify-between min-h-[140px] relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-sm sm:text-base font-semibold text-white/95">
@@ -215,7 +282,7 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
           </div>
           <div className="mt-3">
             <div className="text-3xl sm:text-4xl font-medium tracking-tight">
-              $1,230
+              ${pendingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-white/80 font-normal mt-2">
               Processing for deposit
@@ -227,7 +294,7 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
         <div className="bg-[#7C3AED] rounded-lg p-6 text-white shadow-sm flex flex-col justify-between min-h-[140px] relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-sm sm:text-base font-semibold text-white/95">
-              Open Invoices
+              Awaiting PM Approval
             </span>
             <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white">
               <TrendingUp className="w-5 h-5 stroke-[2.5]" />
@@ -235,10 +302,10 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
           </div>
           <div className="mt-3">
             <div className="text-3xl sm:text-4xl font-medium tracking-tight">
-              $230
+              ${openInvoicesAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-white/80 font-normal mt-2">
-              Awaiting Approval
+              {pendingApprovalJobs.length} job{pendingApprovalJobs.length === 1 ? "" : "s"} submitted
             </p>
           </div>
         </div>
@@ -248,22 +315,22 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
       <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-5 sm:p-6 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
-            Payment Methods
+            Payout Bank Account
           </h2>
           <button
             type="button"
             onClick={() => setIsAddAccountModalOpen(true)}
-            className="bg-[#5B1B95] hover:bg-[#4C127D] text-white px-4 py-3 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="bg-[#5B1B95] hover:bg-[#4C127D] text-white px-4 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            <span>Add account</span>
+            <span>Add Account</span>
           </button>
         </div>
 
         {/* Tab / Category Pill */}
-        <div className="bg-[#F2E7FC] border border-[#6B1294]/30 text-[#6B1294] py-3 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold text-xs sm:text-sm w-full text-center">
+        <div className="bg-[#F2E7FC] border border-[#6B1294]/30 text-[#6B1294] py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold text-xs sm:text-sm w-full text-center">
           <Landmark className="w-4 h-4" />
-          <span>Bank Account</span>
+          <span>Direct Deposit / ACH Account</span>
         </div>
 
         {/* Bank Accounts List */}
@@ -291,7 +358,7 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
               {acc.isPrimary && (
                 <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 w-fit">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Primary
+                  Primary Payout
                 </span>
               )}
             </div>
@@ -302,16 +369,21 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
       {/* Payment History Section Container */}
       <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-5 sm:p-6 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
-            Payment History
-          </h2>
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
+              Payment & Invoice History
+            </h2>
+            <p className="text-xs text-gray-500 font-normal mt-0.5">
+              Live payouts and invoices tied to your completed work orders.
+            </p>
+          </div>
           <button
             type="button"
             onClick={handleExport}
             className="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
             <Download className="w-3.5 h-3.5 text-gray-500" />
-            <span>Export</span>
+            <span>Export CSV</span>
           </button>
         </div>
 
@@ -319,39 +391,56 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
         <div className="overflow-x-auto rounded-lg">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
-              <tr className="border-b border-gray-300/60 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Payment ID</th>
+              <tr className="border-b border-gray-300/60 text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50/50">
+                <th className="py-3.5 px-4">Invoice / Pay ID</th>
                 <th className="py-3.5 px-4">Job ID</th>
                 <th className="py-3.5 px-4">Property Name</th>
-                <th className="py-3.5 px-4">Payment Date</th>
-                <th className="py-3.5 px-4">Amount</th>
+                <th className="py-3.5 px-4">Date</th>
+                <th className="py-3.5 px-4">Payout Amount</th>
                 <th className="py-3.5 px-4">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-300/40 text-xs sm:text-sm">
-              {paymentHistory.map((row) => (
-                <tr
-                  key={row.paymentId}
-                  className="hover:bg-gray-100/60 transition-colors"
-                >
-                  <td className="py-4 px-4 font-bold text-[#6B1294]">
-                    {row.paymentId}
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-sm text-gray-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin text-[#6B1294]" />
+                      <span>Loading payment history...</span>
+                    </div>
                   </td>
-                  <td className="py-4 px-4 font-medium text-gray-700">
-                    {row.jobId}
-                  </td>
-                  <td className="py-4 px-4 font-normal text-gray-600">
-                    {row.propertyName}
-                  </td>
-                  <td className="py-4 px-4 font-normal text-gray-500">
-                    {row.paymentDate}
-                  </td>
-                  <td className="py-4 px-4 font-bold text-gray-900">
-                    {row.amount}
-                  </td>
-                  <td className="py-4 px-4">{getStatusBadge(row.status)}</td>
                 </tr>
-              ))}
+              ) : paymentRows.length > 0 ? (
+                paymentRows.map((row, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-purple-50/20 transition-colors"
+                  >
+                    <td className="py-4 px-4 font-bold text-[#6B1294]">
+                      {row.paymentId}
+                    </td>
+                    <td className="py-4 px-4 font-medium text-gray-700">
+                      {row.jobId}
+                    </td>
+                    <td className="py-4 px-4 font-medium text-gray-900">
+                      {row.propertyName}
+                    </td>
+                    <td className="py-4 px-4 font-normal text-gray-500">
+                      {row.paymentDate}
+                    </td>
+                    <td className="py-4 px-4 font-bold text-gray-900">
+                      {row.amount}
+                    </td>
+                    <td className="py-4 px-4">{getStatusBadge(row.status)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-sm text-gray-500">
+                    No completed payments or open invoices found yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -379,7 +468,6 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
             </div>
 
             <form onSubmit={handleAddAccountSubmit} className="space-y-4">
-              {/* (1). Bank Name */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                   Bank Name *
@@ -392,10 +480,11 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                     if (e.target.value) setModalErrors((p) => ({ ...p, bankName: "" }));
                   }}
                   placeholder="e.g. Chase Bank, Bank of America"
-                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${modalErrors.bankName
-                    ? "border-red-500 bg-red-50/20"
-                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                    }`}
+                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${
+                    modalErrors.bankName
+                      ? "border-red-500 bg-red-50/20"
+                      : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                  }`}
                 />
                 {modalErrors.bankName && (
                   <p className="text-red-500 text-xs mt-1 font-semibold">
@@ -404,7 +493,6 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                 )}
               </div>
 
-              {/* (2). Account Holder (Name on Account) */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                   Account Holder (Name on Account) *
@@ -417,10 +505,11 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                     if (e.target.value) setModalErrors((p) => ({ ...p, accountHolder: "" }));
                   }}
                   placeholder="e.g. John Doe"
-                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${modalErrors.accountHolder
-                    ? "border-red-500 bg-red-50/20"
-                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                    }`}
+                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${
+                    modalErrors.accountHolder
+                      ? "border-red-500 bg-red-50/20"
+                      : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                  }`}
                 />
                 {modalErrors.accountHolder && (
                   <p className="text-red-500 text-xs mt-1 font-semibold">
@@ -429,7 +518,6 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                 )}
               </div>
 
-              {/* (3). Account Type */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                   Account Type *
@@ -449,7 +537,6 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                 </Select>
               </div>
 
-              {/* (4). Routing Number */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                   Routing Number *
@@ -461,11 +548,12 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                     setNewRoutingNumber(e.target.value);
                     if (e.target.value) setModalErrors((p) => ({ ...p, routingNumber: "" }));
                   }}
-                  placeholder="••••••0142"
-                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${modalErrors.routingNumber
-                    ? "border-red-500 bg-red-50/20"
-                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                    }`}
+                  placeholder="9-digit routing number"
+                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${
+                    modalErrors.routingNumber
+                      ? "border-red-500 bg-red-50/20"
+                      : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                  }`}
                 />
                 {modalErrors.routingNumber && (
                   <p className="text-red-500 text-xs mt-1 font-semibold">
@@ -474,7 +562,6 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                 )}
               </div>
 
-              {/* (5). Account Number */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                   Account Number *
@@ -486,11 +573,12 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                     setNewAccountNumber(e.target.value);
                     if (e.target.value) setModalErrors((p) => ({ ...p, accountNumber: "" }));
                   }}
-                  placeholder="••••••••4892"
-                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${modalErrors.accountNumber
-                    ? "border-red-500 bg-red-50/20"
-                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                    }`}
+                  placeholder="Enter Account Number"
+                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${
+                    modalErrors.accountNumber
+                      ? "border-red-500 bg-red-50/20"
+                      : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                  }`}
                 />
                 {modalErrors.accountNumber && (
                   <p className="text-red-500 text-xs mt-1 font-semibold">
@@ -499,23 +587,23 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                 )}
               </div>
 
-              {/* (6). Confirm Account Number */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                   Confirm Account Number *
                 </label>
                 <input
-                  type="password"
+                  type="text"
                   value={newConfirmAccountNumber}
                   onChange={(e) => {
                     setNewConfirmAccountNumber(e.target.value);
                     if (e.target.value) setModalErrors((p) => ({ ...p, confirmAccountNumber: "" }));
                   }}
-                  placeholder="••••••••4892"
-                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${modalErrors.confirmAccountNumber
-                    ? "border-red-500 bg-red-50/20"
-                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
-                    }`}
+                  placeholder="Re-enter Account Number"
+                  className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all ${
+                    modalErrors.confirmAccountNumber
+                      ? "border-red-500 bg-red-50/20"
+                      : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                  }`}
                 />
                 {modalErrors.confirmAccountNumber && (
                   <p className="text-red-500 text-xs mt-1 font-semibold">
@@ -524,23 +612,20 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
                 )}
               </div>
 
-              <div className="pt-2 flex flex-col space-y-2">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddAccountModalOpen(false)}
-                    className="flex-1 py-3 px-4 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg text-gray-800 font-semibold text-sm transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 px-4 bg-[#6B1294] hover:bg-[#580e7d] text-white font-semibold rounded-lg shadow-xs text-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <Lock className="w-4 h-4 text-white" />
-                    <span>Save Account</span>
-                  </button>
-                </div>
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAccountModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-lg bg-[#5B1B95] hover:bg-[#4C127D] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs"
+                >
+                  Save Account
+                </button>
               </div>
             </form>
           </div>
@@ -549,4 +634,3 @@ export default function ServiceProviderPaymentPage(): React.ReactElement {
     </div>
   );
 }
-
