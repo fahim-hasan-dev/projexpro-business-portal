@@ -6,9 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import toast from 'react-hot-toast';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
 import { useFindUserNameQuery, useSignupMutation } from '../../../../features/auth/authApi';
+import AuthHeroSide from '../../../../components/auth/AuthHeroSide';
 
 type Role = 'manager' | 'provider';
 
@@ -17,20 +16,19 @@ interface RegisterErrors {
   lastName?: string;
   userName?: string;
   email?: string;
-  contactNumber?: string;
   password?: string;
   confirmPassword?: string;
 }
 
 function ProjexProLogo() {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center justify-center">
       <Image
         src="/logo/logo.png"
-        alt="ProjexPro Logo"
-        width={220}
-        height={60}
-        className="h-14 w-auto object-contain"
+        alt="ProjexPro"
+        width={578}
+        height={515}
+        className="w-28 sm:w-32 md:w-[130px] h-auto object-contain"
         priority
       />
     </div>
@@ -43,7 +41,6 @@ export default function RegisterPage() {
   const [lastName, setLastName] = useState<string>('');
   const [userName, setuserName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [contactNumber, setContactNumber] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -94,22 +91,23 @@ export default function RegisterPage() {
     } else if (!validateEmail(email)) {
       newErrors.email = 'Please enter a valid email address';
     } else if (isPersonalEmail(email)) {
-      newErrors.email = 'Personal email domains (Gmail, Yahoo, Outlook, etc.) are not accepted. Please use your company email address.';
+      newErrors.email = 'Personal email domains are not accepted. Please use your company email address.';
     }
+
     if (!userName.trim()) {
-      newErrors.userName = 'userName is required';
+      newErrors.userName = 'Username is required';
     } else if (isUsernameExists) {
       newErrors.userName = 'Username is already taken';
     }
 
-    if (!contactNumber.trim()) newErrors.contactNumber = 'Contact number is required';
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
+
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = 'Confirm password is required';
     } else if (confirmPassword !== password) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
@@ -120,12 +118,11 @@ export default function RegisterPage() {
 
     try {
       const payload = {
-        firstName,
-        lastName,
-        userName,
-        email,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        userName: userName.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
         password,
-        contactNumber: contactNumber || "+447123456789",
         role: role === 'manager' ? 'property_manager' : 'service_provider',
       };
 
@@ -146,35 +143,42 @@ export default function RegisterPage() {
   const isManager = role === 'manager';
 
   return (
-    <div className="min-h-screen lg:h-screen w-full flex flex-col lg:flex-row bg-[#EBEBEB] overflow-x-hidden lg:overflow-hidden">
+    <div className="min-h-screen lg:h-screen w-full flex flex-col lg:flex-row bg-white overflow-x-hidden lg:overflow-hidden">
       {/* Left Section - Form */}
-      <div className="w-full lg:w-[50%] xl:w-[50%] flex flex-col justify-between p-6 sm:p-12 lg:p-16 xl:p-20 min-h-screen lg:h-screen overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Logo */}
-        <div className="pt-2 sm:pt-0 max-w-lg w-full mx-auto">
-          <ProjexProLogo />
-        </div>
+      <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-12 lg:p-14 min-h-screen lg:h-screen overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Top Spacer */}
+        <div className="pt-2" />
 
         {/* Form Container */}
-        <div className="max-w-lg w-full mx-auto my-auto py-2">
-          <h1 className="text-2xl sm:text-3xl lg:text-[30px] font-bold text-gray-900 tracking-tight leading-snug">
-            Let’s Get Started
+        <div className="max-w-[440px] w-full mx-auto my-auto py-4">
+          {/* Centered Logo */}
+          <div className="flex justify-center mb-5">
+            <ProjexProLogo />
+          </div>
+
+          {/* Title & Subtitle */}
+          <h1 className="text-2xl sm:text-[28px] font-bold text-gray-900 text-center tracking-tight">
+            Let's Get Started
           </h1>
-          <p className="text-sm text-gray-500 mt-2 mb-6 font-normal">
+          <p className="text-xs sm:text-sm text-gray-500 text-center mt-1.5 mb-5 font-normal">
             Create your ProjexPro Business account.
           </p>
 
           {/* Role Selection Toggle */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-5">
             {/* Property Manager Button */}
             <button
               type="button"
               onClick={() => setRole('manager')}
-              className={`flex items-center justify-center gap-1.5 py-3.5 px-4 rounded-lg font-semibold text-sm text-white transition-all cursor-pointer shadow-sm ${isManager ? 'bg-[#6B1294]' : 'bg-[#6B1294] opacity-90'
-                }`}
+              className={`h-11 rounded-[10px] font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isManager
+                  ? 'bg-[#2E0F59] text-white shadow-xs'
+                  : 'bg-white border-2 border-[#F5B515] text-[#B45309] hover:bg-amber-50/40'
+              }`}
             >
               <span>Property Manager</span>
               {isManager && (
-                <span className="flex items-center justify-center w-4 h-4 bg-white text-[#6B1294] rounded-full text-[10px] font-medium">
+                <span className="w-4 h-4 rounded-full bg-[#F5B515] text-[#2E0F59] flex items-center justify-center text-[10px] font-black">
                   ✓
                 </span>
               )}
@@ -184,24 +188,27 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => setRole('provider')}
-              className={`flex items-center justify-center gap-1.5 py-3.5 px-4 rounded-lg font-semibold text-sm text-white transition-all cursor-pointer shadow-sm ${!isManager ? 'bg-[#E68A00]' : 'bg-[#E68A00] opacity-90'
-                }`}
+              className={`h-11 rounded-[10px] font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                !isManager
+                  ? 'bg-[#2E0F59] text-white shadow-xs'
+                  : 'bg-white border-2 border-[#F5B515] text-[#B45309] hover:bg-amber-50/40'
+              }`}
             >
               <span>Service Provider</span>
               {!isManager && (
-                <span className="flex items-center justify-center w-4 h-4 bg-white text-[#E68A00] rounded-full text-[10px] font-medium">
+                <span className="w-4 h-4 rounded-full bg-[#F5B515] text-[#2E0F59] flex items-center justify-center text-[10px] font-black">
                   ✓
                 </span>
               )}
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* First Name & Last Name (2 Cols) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* First Name & Last Name (2 Columns) */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  First Name <span className="text-red-500">*</span>
+                <label htmlFor="firstName" className="block text-xs font-semibold text-gray-800 mb-1">
+                  First Name
                 </label>
                 <input
                   id="firstName"
@@ -211,18 +218,19 @@ export default function RegisterPage() {
                     setFirstName(e.target.value);
                     if (errors.firstName) setErrors({ ...errors, firstName: '' });
                   }}
-                  placeholder="Enter your first name here..."
-                  className={`w-full px-4 h-[50px] bg-[#E2E2E5] border ${errors.firstName ? 'border-red-500' : 'border-transparent'
-                    } rounded-lg text-gray-900 placeholder:text-gray-400 text-sm focus:bg-white focus:border-primary focus:outline-none transition-all`}
+                  placeholder="Enter your first name"
+                  className={`w-full h-10 px-3.5 bg-[#FAFAFB] border ${
+                    errors.firstName ? 'border-red-500' : 'border-gray-200'
+                  } rounded-[10px] text-xs text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#2E0F59] focus:outline-none focus:ring-1 focus:ring-[#2E0F59] transition-all`}
                 />
                 {errors.firstName && (
-                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.firstName}</p>
+                  <p className="mt-1 text-[11px] text-red-500 font-medium">{errors.firstName}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="lastName" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Last Name <span className="text-red-500">*</span>
+                <label htmlFor="lastName" className="block text-xs font-semibold text-gray-800 mb-1">
+                  Last Name
                 </label>
                 <input
                   id="lastName"
@@ -232,20 +240,21 @@ export default function RegisterPage() {
                     setLastName(e.target.value);
                     if (errors.lastName) setErrors({ ...errors, lastName: '' });
                   }}
-                  placeholder="Enter your last name here..."
-                  className={`w-full px-4 h-[50px] bg-[#E2E2E5] border ${errors.lastName ? 'border-red-500' : 'border-transparent'
-                    } rounded-lg text-gray-900 placeholder:text-gray-400 text-sm focus:bg-white focus:border-primary focus:outline-none transition-all`}
+                  placeholder="Enter your last name"
+                  className={`w-full h-10 px-3.5 bg-[#FAFAFB] border ${
+                    errors.lastName ? 'border-red-500' : 'border-gray-200'
+                  } rounded-[10px] text-xs text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#2E0F59] focus:outline-none focus:ring-1 focus:ring-[#2E0F59] transition-all`}
                 />
                 {errors.lastName && (
-                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.lastName}</p>
+                  <p className="mt-1 text-[11px] text-red-500 font-medium">{errors.lastName}</p>
                 )}
               </div>
             </div>
 
             {/* Business Email Address */}
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Business Email Address <span className="text-red-500">*</span>
+              <label htmlFor="email" className="block text-xs font-semibold text-gray-800 mb-1">
+                Business Email Address
               </label>
               <input
                 id="email"
@@ -255,211 +264,150 @@ export default function RegisterPage() {
                   setEmail(e.target.value);
                   if (errors.email) setErrors({ ...errors, email: '' });
                 }}
-                placeholder="Enter your email Address here..."
-                className={`w-full px-4 h-[50px] bg-[#E2E2E5] border ${errors.email ? 'border-red-500' : 'border-transparent'
-                  } rounded-lg text-gray-900 placeholder:text-gray-400 text-sm focus:bg-white focus:border-primary focus:outline-none transition-all`}
+                placeholder="you@company.com"
+                className={`w-full h-10 px-3.5 bg-[#FAFAFB] border ${
+                  errors.email ? 'border-red-500' : 'border-gray-200'
+                } rounded-[10px] text-xs text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#2E0F59] focus:outline-none focus:ring-1 focus:ring-[#2E0F59] transition-all`}
               />
-              <p className="mt-1.5 text-xs text-gray-500 leading-relaxed font-normal">
-                Use your company email address. Personal email domains such as Gmail, Yahoo, Outlook.com, iCloud, and similar providers are not accepted.
+              <p className="mt-1 text-[11px] text-gray-400 leading-tight font-normal">
+                Use your company email. Personal domains (Gmail, Yahoo, Outlook.com, iCloud, and similar) are not accepted.
               </p>
               {errors.email && (
-                <p className="mt-1 text-xs text-red-500 font-medium">{errors.email}</p>
+                <p className="mt-1 text-[11px] text-red-500 font-medium">{errors.email}</p>
               )}
             </div>
 
-            {/* Create userName & Contact Number (2 Cols) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Create Username */}
+            <div>
+              <label htmlFor="userName" className="block text-xs font-semibold text-gray-800 mb-1">
+                Create Username
+              </label>
+              <div className="relative">
+                <input
+                  id="userName"
+                  type="text"
+                  value={userName}
+                  onChange={(e) => {
+                    setuserName(e.target.value);
+                    if (errors.userName) setErrors({ ...errors, userName: '' });
+                  }}
+                  placeholder="Enter a username"
+                  className={`w-full h-10 px-3.5 pr-8 bg-[#FAFAFB] border ${
+                    errors.userName || (userName.trim() && isUsernameExists)
+                      ? 'border-red-500'
+                      : userName.trim() && isUsernameAvailable
+                      ? 'border-green-500'
+                      : 'border-gray-200'
+                  } rounded-[10px] text-xs text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#2E0F59] focus:outline-none focus:ring-1 focus:ring-[#2E0F59] transition-all`}
+                />
+                {isCheckingUsername && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />
+                  </span>
+                )}
+              </div>
+              {errors.userName ? (
+                <p className="mt-1 text-[11px] text-red-500 font-medium">{errors.userName}</p>
+              ) : userName.trim() && isUsernameExists ? (
+                <p className="mt-1 text-[11px] text-red-500 font-medium">Username is already taken</p>
+              ) : userName.trim() && isUsernameAvailable ? (
+                <p className="mt-1 text-[11px] text-green-600 font-medium">Username is available</p>
+              ) : null}
+            </div>
+
+            {/* Create Password & Confirm Password (2 Columns) */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="userName" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Create userName <span className="text-red-500">*</span>
+                <label htmlFor="password" className="block text-xs font-semibold text-gray-800 mb-1">
+                  Create Password
                 </label>
                 <div className="relative">
                   <input
-                    id="userName"
-                    type="text"
-                    value={userName}
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
                     onChange={(e) => {
-                      setuserName(e.target.value);
-                      if (errors.userName) setErrors({ ...errors, userName: '' });
+                      setPassword(e.target.value);
+                      if (errors.password) setErrors({ ...errors, password: '' });
                     }}
-                    placeholder="Enter your userName here..."
-                    className={`w-full px-4 h-[50px] bg-[#E2E2E5] border ${
-                      errors.userName || (userName.trim() && isUsernameExists)
-                        ? 'border-red-500 focus:border-red-500'
-                        : userName.trim() && isUsernameAvailable
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-transparent focus:border-primary'
-                    } rounded-lg text-gray-900 placeholder:text-gray-400 text-sm focus:bg-white focus:outline-none transition-all pr-8`}
+                    placeholder="Enter password"
+                    className={`w-full h-10 px-3.5 pr-8 bg-[#FAFAFB] border ${
+                      errors.password ? 'border-red-500' : 'border-gray-200'
+                    } rounded-[10px] text-xs text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#2E0F59] focus:outline-none focus:ring-1 focus:ring-[#2E0F59] transition-all`}
                   />
-                  {isCheckingUsername && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#2E0F59] hover:text-[#230945] transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-                {errors.userName ? (
-                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.userName}</p>
-                ) : userName.trim() && isUsernameExists ? (
-                  <p className="mt-1 text-xs text-red-500 font-medium">Username is already taken</p>
-                ) : userName.trim() && isUsernameAvailable ? (
-                  <p className="mt-1 text-xs text-green-600 font-medium">Username is available</p>
-                ) : null}
+                {errors.password && (
+                  <p className="mt-1 text-[11px] text-red-500 font-medium">{errors.password}</p>
+                )}
               </div>
 
               <div>
-                <label htmlFor="contactNumber" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Contact Number <span className="text-red-500">*</span>
+                <label htmlFor="confirmPassword" className="block text-xs font-semibold text-gray-800 mb-1">
+                  Confirm Password
                 </label>
-                <div
-                  className={`w-full px-4 h-[50px] flex items-center bg-[#E2E2E5] border ${
-                    errors.contactNumber ? 'border-red-500' : 'border-transparent'
-                  } rounded-lg text-gray-900 text-sm focus-within:bg-white focus-within:border-primary transition-all [&_.PhoneInput]:w-full [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:outline-none [&_.PhoneInputInput]:text-sm [&_.PhoneInputInput]:ml-2`}
-                >
-                  <PhoneInput
-                    international
-                    defaultCountry="US"
-                    placeholder="Enter contact number..."
-                    value={contactNumber}
-                    onChange={(val) => {
-                      setContactNumber(val ? String(val) : '');
-                      if (errors.contactNumber) setErrors({ ...errors, contactNumber: '' });
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
                     }}
+                    placeholder="Confirm password"
+                    className={`w-full h-10 px-3.5 pr-8 bg-[#FAFAFB] border ${
+                      errors.confirmPassword ? 'border-red-500' : 'border-gray-200'
+                    } rounded-[10px] text-xs text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#2E0F59] focus:outline-none focus:ring-1 focus:ring-[#2E0F59] transition-all`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#2E0F59] hover:text-[#230945] transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-                {errors.contactNumber && (
-                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.contactNumber}</p>
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-[11px] text-red-500 font-medium">{errors.confirmPassword}</p>
                 )}
               </div>
             </div>
 
-            {/* Create Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Create Password <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) setErrors({ ...errors, password: '' });
-                  }}
-                  placeholder="Enter your password here..."
-                  className={`w-full px-4 h-[50px] bg-[#E2E2E5] border ${errors.password ? 'border-red-500' : 'border-transparent'
-                    } rounded-lg text-gray-900 placeholder:text-gray-400 text-sm focus:bg-white focus:border-primary focus:outline-none transition-all pr-11`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-primary hover:opacity-80 transition-opacity"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-500 font-medium">{errors.password}</p>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Confirm Password <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
-                  }}
-                  placeholder="Confirm your password here..."
-                  className={`w-full px-4 h-[50px] bg-[#E2E2E5] border ${errors.confirmPassword ? 'border-red-500' : 'border-transparent'
-                    } rounded-lg text-gray-900 placeholder:text-gray-400 text-sm focus:bg-white focus:border-primary focus:outline-none transition-all pr-11`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-primary hover:opacity-80 transition-opacity"
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-500 font-medium">{errors.confirmPassword}</p>
-              )}
-            </div>
-
-            {/* Create Business Account Button */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading || isUsernameExists}
-              className={`w-full mt-4 text-white font-semibold py-3.5 px-4 rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 ${isManager ? 'bg-[#6B1294] hover:bg-[#580e7d]' : 'bg-[#E68A00] hover:bg-[#c77700]'
-                }`}
+              className="w-full mt-3 h-11 bg-[#2E0F59] hover:bg-[#230945] text-white font-semibold rounded-[10px] shadow-sm transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
             >
-              {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{isLoading ? 'Creating Account...' : 'Create Business Account'}</span>
             </button>
 
-            {/* Sign In Link */}
-            <div className="text-center mt-6 pt-2 text-sm text-gray-700 font-medium">
+            {/* Log in Link */}
+            <div className="text-center text-xs text-gray-500 pt-2">
               Already have an account?{' '}
-              <Link
-                href="/auth/login"
-                className={`font-semibold hover:underline ${isManager ? 'text-[#6B1294]' : 'text-[#E68A00]'}`}
-              >
-                Sign In
+              <Link href="/auth/login" className="font-bold text-[#2E0F59] hover:underline">
+                Log in
               </Link>
             </div>
           </form>
         </div>
 
-        {/* Bottom Spacer */}
-        <div className="hidden lg:block"></div>
-      </div>
-
-      {/* Right Section - Hero Image & Dynamic Content */}
-      <div className="hidden lg:flex lg:w-[50%] xl:w-[50%] sticky top-0 h-screen flex-shrink-0 relative flex-col justify-start p-12 lg:p-16 xl:p-20 overflow-hidden bg-gray-900">
-        {/* Background Image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-700 scale-105"
-          style={{
-            backgroundImage: `url('${isManager ? '/images/signup1.png' : '/images/signup2.png'}')`,
-          }}
-        />
-
-        {/* Hero Content */}
-        <div className="relative z-10 max-w-2xl text-white pt-4">
-          {isManager ? (
-            <>
-              <h2 className="text-3xl lg:text-4xl xl:text-5xl font-semibold leading-[1.30] tracking-tight drop-shadow-md mb-6">
-                PROPERTY OPERATIONS, CONNECTED
-              </h2>
-              <p className="text-base xl:text-lg font-normal text-gray-200 leading-relaxed tracking-normal">
-                Bring work orders, vendor coordination, documentation, and real-time
-                project visibility into one connected platform
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-lg xl:text-xl font-normal text-gray-100 mb-6 tracking-normal">
-                Manage work orders from dispatch to invoicing
-                with automated workflows that reduce administrative headaches
-              </p>
-              <h2 className="text-3xl lg:text-4xl xl:text-5xl font-semibold leading-[1.30] tracking-tight drop-shadow-md">
-                FROM BIDDING TO BILLING.
-                <br />
-                SIMPLIFIED.
-              </h2>
-            </>
-          )}
+        {/* Footer Copyright */}
+        <div className="text-center text-xs text-gray-400 py-3">
+          © 2026 ProjexPro. All rights reserved.
         </div>
       </div>
+
+      {/* Right Section - Onboarding Hero */}
+      <AuthHeroSide />
     </div>
   );
 }
-

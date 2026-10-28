@@ -6,6 +6,7 @@ import { X, AlertTriangle } from "lucide-react";
 interface DeclineJobModalProps {
   isOpen: boolean;
   jobId: string;
+  jobRequestNo?: string;
   onClose: () => void;
   onSubmitDecline: (reason: string) => void;
   isLoading?: boolean;
@@ -14,6 +15,7 @@ interface DeclineJobModalProps {
 export default function DeclineJobModal({
   isOpen,
   jobId,
+  jobRequestNo,
   onClose,
   onSubmitDecline,
   isLoading = false,
@@ -51,7 +53,9 @@ export default function DeclineJobModal({
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Decline Job Request #{jobId}</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                Decline Job Request #{jobRequestNo || jobId}
+              </h2>
               <p className="text-xs text-gray-500 font-normal mt-0.5">
                 Please state your reason for declining. This request will be returned to Super Admin for reassignment.
               </p>

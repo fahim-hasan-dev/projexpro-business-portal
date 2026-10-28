@@ -18,6 +18,11 @@ import {
   Image as ImageIcon,
   Loader2,
   RefreshCw,
+  Calendar,
+  ExternalLink,
+  ZoomIn,
+  Building,
+  Receipt,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -32,6 +37,7 @@ import {
   useUpdateServiceRequestStatusMutation,
 } from "@/features/serviceRequest/serviceRequestApi";
 import { IServiceRequest } from "@/types/serviceRequest";
+import { baseURL } from "@/utils/BaseURL";
 import DeclineJobModal from "./DeclineJobModal";
 
 export default function JobRequestPage(): React.ReactElement {
@@ -48,6 +54,8 @@ export default function JobRequestPage(): React.ReactElement {
   // Modals
   const [declineModalOpen, setDeclineModalOpen] = useState(false);
   const [declineJobTargetId, setDeclineJobTargetId] = useState("");
+  const [declineJobTargetNo, setDeclineJobTargetNo] = useState("");
+  const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
 
   // RTK Query: fetch service requests assigned to the logged-in service provider
   const {
@@ -94,8 +102,9 @@ export default function JobRequestPage(): React.ReactElement {
   };
 
   // Handle Decline Job (Assigned -> Rejected)
-  const handleOpenDeclineModal = (jobId: string) => {
+  const handleOpenDeclineModal = (jobId: string, requestNo?: string) => {
     setDeclineJobTargetId(jobId);
+    setDeclineJobTargetNo(requestNo || jobId);
     setDeclineModalOpen(true);
   };
 
@@ -300,6 +309,30 @@ export default function JobRequestPage(): React.ReactElement {
     return user.phone || user.contactNumber || "";
   };
 
+  const getFullImageUrl = (url?: string): string => {
+    if (!url) return "";
+    if (
+      url.startsWith("http://") ||
+      url.startsWith("https://") ||
+      url.startsWith("blob:") ||
+      url.startsWith("data:")
+    ) {
+      return url;
+    }
+    return `${baseURL}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const formatDate = (dateStr?: string): string => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -449,12 +482,19 @@ export default function JobRequestPage(): React.ReactElement {
             {/* Header */}
             <div className="flex items-start justify-between border-b border-gray-100 pb-3">
               <div>
-                <span className="text-xs font-bold text-purple-700 tracking-wider block">
+                <span className="text-xs font-bold text-purple-700 tracking-wider block font-mono">
                   Job #{currentSelectedJob.requestNo || currentSelectedJob._id}
                 </span>
-                <h2 className="text-xl font-bold text-gray-900 mt-0.5">
-                  {getPropertyName(currentSelectedJob.property)}
-                </h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {getPropertyName(currentSelectedJob.property)}
+                  </h2>
+                  {typeof currentSelectedJob.property === "object" && currentSelectedJob.property?.propertyType && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-600 rounded-md border border-gray-200">
+                      {currentSelectedJob.property.propertyType}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500 font-normal mt-0.5">
                   Property Manager: <span className="font-semibold text-gray-800">{getPMName(currentSelectedJob.user)}</span>
                 </p>
@@ -469,22 +509,30 @@ export default function JobRequestPage(): React.ReactElement {
               </button>
             </div>
 
-            {/* Status & ETA */}
-            <div className="flex items-center justify-between">
-              {getStatusBadge(currentSelectedJob.status)}
+            {/* Status & Dates */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {getStatusBadge(currentSelectedJob.status)}
+                {currentSelectedJob.createdAt && (
+                  <span className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    Requested: {formatDate(currentSelectedJob.createdAt)}
+                  </span>
+                )}
+              </div>
               {currentSelectedJob.eta && (
-                <span className="text-xs text-gray-500 font-semibold flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-gray-400" />
-                  ETA: {new Date(currentSelectedJob.eta).toLocaleDateString()}
+                <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1 border border-purple-200">
+                  <Clock className="w-3.5 h-3.5 text-[#6B1294]" />
+                  ETA: {formatDate(currentSelectedJob.eta)}
                 </span>
               )}
             </div>
 
             {/* Grid 1: Job Type & Priority */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                 <span className="text-[10px] font-bold text-gray-400 uppercase">Issue Title</span>
-                <span className="text-sm font-bold text-gray-900 mt-0.5 block truncate">
+                <span className="text-sm font-bold text-gray-900 mt-0.5 block break-words">
                   {currentSelectedJob.issueTitle}
                 </span>
               </div>
@@ -511,6 +559,11 @@ export default function JobRequestPage(): React.ReactElement {
                       : `+$${currentSelectedJob.specializedRate.value}`
                     : "None"}
                 </span>
+                {currentSelectedJob.specializedRate?.isActive && currentSelectedJob.specializedRate?.reason && (
+                  <span className="text-[10px] text-gray-500 block truncate mt-0.5" title={currentSelectedJob.specializedRate.reason}>
+                    ({currentSelectedJob.specializedRate.reason})
+                  </span>
+                )}
               </div>
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                 <span className="text-[10px] font-bold text-[#6B1294] uppercase">Total Payout</span>
@@ -523,50 +576,70 @@ export default function JobRequestPage(): React.ReactElement {
             {/* Job Site Address */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <span className="text-[10px] font-bold text-gray-400 uppercase">Job Site Address</span>
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900 mt-1">
-                <MapPin className="w-4 h-4 text-[#6B1294] shrink-0" />
-                <span>
-                  {getPropertyAddress(currentSelectedJob.property) || "Address not provided"}
-                  {currentSelectedJob.locationDetails ? ` — ${currentSelectedJob.locationDetails}` : ""}
-                </span>
+              <div className="flex items-start gap-1.5 text-xs font-semibold text-gray-900 mt-1">
+                <MapPin className="w-4 h-4 text-[#6B1294] shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span>{getPropertyAddress(currentSelectedJob.property) || "Address not provided"}</span>
+                  {currentSelectedJob.locationDetails && (
+                    <span className="text-gray-600 block font-normal">
+                      Unit / Scope Location: <strong className="text-gray-900 font-semibold">{currentSelectedJob.locationDetails}</strong>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Property Manager Contact Details */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs space-y-1">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs space-y-1.5">
               <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">
                 Property Manager Contact
               </span>
               <div className="flex flex-wrap items-center gap-4 text-gray-700 font-medium">
                 <span className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-gray-400" />
-                  {getPMName(currentSelectedJob.user)}
+                  <span className="font-semibold text-gray-900">{getPMName(currentSelectedJob.user)}</span>
                 </span>
                 {getPMEmail(currentSelectedJob.user) && (
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-gray-400" />
-                    {getPMEmail(currentSelectedJob.user)}
-                  </span>
+                  <a
+                    href={`mailto:${getPMEmail(currentSelectedJob.user)}`}
+                    className="flex items-center gap-1.5 text-purple-700 hover:text-purple-900 hover:underline"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-purple-500" />
+                    <span>{getPMEmail(currentSelectedJob.user)}</span>
+                  </a>
                 )}
                 {getPMPhone(currentSelectedJob.user) && (
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-gray-400" />
-                    {getPMPhone(currentSelectedJob.user)}
-                  </span>
+                  <a
+                    href={`tel:${getPMPhone(currentSelectedJob.user)}`}
+                    className="flex items-center gap-1.5 text-purple-700 hover:text-purple-900 hover:underline"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-purple-500" />
+                    <span>{getPMPhone(currentSelectedJob.user)}</span>
+                  </a>
                 )}
               </div>
             </div>
 
             {/* Tenant Info if Occupied */}
-            {currentSelectedJob.isOccupied && (
-              <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 space-y-1">
+            {Boolean(currentSelectedJob.isOccupied && (currentSelectedJob.isOccupied as any) !== "false") && (
+              <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 space-y-1.5">
                 <span className="text-[10px] font-bold text-blue-700 uppercase block">
                   Occupied Unit — Tenant Details
                 </span>
-                <div className="flex items-center gap-3">
-                  <span>Name: <strong>{currentSelectedJob.tenantName || "N/A"}</strong></span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <span>
+                    Name: <strong>{currentSelectedJob.tenantName || "N/A"}</strong>
+                  </span>
                   {currentSelectedJob.tenantPhone && (
-                    <span>Phone: <strong>{currentSelectedJob.tenantPhone}</strong></span>
+                    <span>
+                      Phone:{" "}
+                      <a
+                        href={`tel:${currentSelectedJob.tenantPhone}`}
+                        className="font-bold underline hover:text-blue-950"
+                      >
+                        {currentSelectedJob.tenantPhone}
+                      </a>
+                    </span>
                   )}
                 </div>
               </div>
@@ -583,21 +656,33 @@ export default function JobRequestPage(): React.ReactElement {
             {/* Photos attached to request */}
             {currentSelectedJob.images && currentSelectedJob.images.length > 0 && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-2">
-                  Request Photos ({currentSelectedJob.images.length})
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {currentSelectedJob.images.map((img, idx) => (
-                    <a
-                      key={idx}
-                      href={img}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity"
-                    >
-                      <img src={img} alt={`Job Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                    </a>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">
+                    Request Photos ({currentSelectedJob.images.length})
+                  </span>
+                  <span className="text-[11px] text-gray-400">Click photo to preview</span>
+                </div>
+                <div className="flex flex-wrap gap-2.5">
+                  {currentSelectedJob.images.map((img, idx) => {
+                    const fullUrl = getFullImageUrl(img);
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setPreviewModalImage(fullUrl)}
+                        className="group relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer shadow-2xs hover:border-[#6B1294] transition-all"
+                        title="Click to view full photo"
+                      >
+                        <img
+                          src={fullUrl}
+                          alt={`Job Photo ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                        <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <ZoomIn className="w-5 h-5 drop-shadow" />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -625,21 +710,58 @@ export default function JobRequestPage(): React.ReactElement {
 
             {currentSelectedJob.completionImages && currentSelectedJob.completionImages.length > 0 && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-2">
-                  Completed Work Photos
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {currentSelectedJob.completionImages.map((img, idx) => (
-                    <a
-                      key={idx}
-                      href={img}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 hover:opacity-90"
-                    >
-                      <img src={img} alt={`Completion Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                    </a>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">
+                    Completed Work Photos ({currentSelectedJob.completionImages.length})
+                  </span>
+                  <span className="text-[11px] text-gray-400">Click photo to preview</span>
+                </div>
+                <div className="flex flex-wrap gap-2.5">
+                  {currentSelectedJob.completionImages.map((img, idx) => {
+                    const fullUrl = getFullImageUrl(img);
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setPreviewModalImage(fullUrl)}
+                        className="group relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer shadow-2xs hover:border-[#6B1294] transition-all"
+                        title="Click to view full photo"
+                      >
+                        <img
+                          src={fullUrl}
+                          alt={`Completion Photo ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                        <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <ZoomIn className="w-5 h-5 drop-shadow" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Associated Invoice if Completed or Invoice exists */}
+            {currentSelectedJob.invoice && typeof currentSelectedJob.invoice === "object" && (
+              <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase flex items-center gap-1.5">
+                    <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                    Invoice #{currentSelectedJob.invoice.invoiceNo || "N/A"}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    currentSelectedJob.invoice.status === "Paid" || currentSelectedJob.isPaid
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    {currentSelectedJob.invoice.status || (currentSelectedJob.isPaid ? "Paid" : "Pending Payment")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 text-emerald-900 mt-1 font-medium">
+                  <span>Total Amount: <strong>${(currentSelectedJob.invoice.totalAmount ?? (currentSelectedJob.finalPayout ?? currentSelectedJob.basePayment ?? 0)).toFixed(2)}</strong></span>
+                  {currentSelectedJob.invoice.paidAmount !== undefined && currentSelectedJob.invoice.paidAmount > 0 && (
+                    <span>Paid: <strong>${currentSelectedJob.invoice.paidAmount.toFixed(2)}</strong></span>
+                  )}
                 </div>
               </div>
             )}
@@ -660,7 +782,7 @@ export default function JobRequestPage(): React.ReactElement {
                 <button
                   type="button"
                   disabled={isUpdating}
-                  onClick={() => handleOpenDeclineModal(currentSelectedJob._id)}
+                  onClick={() => handleOpenDeclineModal(currentSelectedJob._id, currentSelectedJob.requestNo)}
                   className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-semibold py-3 px-4 rounded-lg text-sm transition-colors cursor-pointer text-center border border-red-200"
                 >
                   Decline Job
@@ -715,6 +837,7 @@ export default function JobRequestPage(): React.ReactElement {
       <DeclineJobModal
         isOpen={declineModalOpen}
         jobId={declineJobTargetId}
+        jobRequestNo={declineJobTargetNo}
         onClose={() => setDeclineModalOpen(false)}
         onSubmitDecline={handleSubmitDeclineReason}
         isLoading={isUpdating}
@@ -825,6 +948,48 @@ export default function JobRequestPage(): React.ReactElement {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Lightbox Modal */}
+      {previewModalImage && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setPreviewModalImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-3 flex flex-col items-center border border-gray-200 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+              <span className="text-xs font-bold text-gray-700">Photo Preview</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewModalImage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                >
+                  <span>Open Full Size</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalImage(null)}
+                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[75vh] flex items-center justify-center">
+              <img
+                src={previewModalImage}
+                alt="Enlarged photo"
+                className="max-h-[72vh] w-auto max-w-full object-contain rounded-lg"
+              />
+            </div>
           </div>
         </div>
       )}
