@@ -5,18 +5,24 @@ import React from "react";
 
 export default function AuthHeroSide() {
   return (
-    <div className="hidden lg:flex lg:w-1/2 sticky top-0 h-screen flex-shrink-0 relative flex-col justify-end p-12 lg:p-16 xl:p-20 overflow-hidden bg-[#1B0633]">
-      {/* Background Image */}
+    <div className="hidden lg:flex lg:w-1/2 sticky top-0 h-screen flex-shrink-0 relative flex-col justify-end p-12 lg:p-16 xl:p-20 overflow-hidden bg-[#1F0B43]">
+      {/* Background Image - Left aligned to match reference design framing */}
       <Image
         src="/images/onbording.jpg"
         alt="Property Operations"
         fill
-        className="object-cover object-center"
+        className="object-cover object-left"
         priority
       />
 
-      {/* Deep Purple Gradient Overlay matching reference image */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#1b0633] via-[#220a3e]/80 via-45% to-transparent pointer-events-none" />
+      {/* Deep Purple Gradient Overlay matching reference image exactly */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(31, 11, 67, 0.15) 0%, rgba(31, 11, 67, 0.25) 25%, rgba(31, 11, 67, 0.52) 48%, rgba(31, 11, 67, 0.80) 72%, rgba(29, 9, 63, 0.94) 88%, #1F0B43 100%)",
+        }}
+      />
 
       {/* Hero Content */}
       <div className="relative z-10 max-w-xl pb-2">
@@ -28,7 +34,7 @@ export default function AuthHeroSide() {
         </h2>
 
         {/* Accent Yellow Bar */}
-        <div className="w-16 h-1.5 bg-[#F5B515] rounded-full my-6" />
+        <div className="w-14 h-1.5 bg-[#F5B515] rounded-full my-5" />
 
         {/* Subtitles */}
         <p className="text-lg lg:text-xl font-medium text-white/95">
