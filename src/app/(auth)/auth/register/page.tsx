@@ -133,8 +133,9 @@ export default function RegisterPage() {
       } else {
         toast.error(res?.message || 'Registration failed');
       }
-    } catch (error: any) {
-      console.error(error);
+    } catch (err: unknown) {
+      console.error(err);
+      const error = err as { data?: { message?: string }; message?: string };
       const errorMessage = error?.data?.message || error?.message || 'Registration failed. Please try again.';
       toast.error(errorMessage);
     }

@@ -58,9 +58,10 @@ export default function ForgotPasswordPage() {
       } else {
         toast.error(res?.message || 'Failed to send OTP.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const errorMessage = err?.data?.message || err?.message || 'Failed to send reset link. Please try again.';
+      const errorObj = err as { data?: { message?: string }; message?: string };
+      const errorMessage = errorObj?.data?.message || errorObj?.message || 'Failed to send reset link. Please try again.';
       toast.error(errorMessage);
     }
   };

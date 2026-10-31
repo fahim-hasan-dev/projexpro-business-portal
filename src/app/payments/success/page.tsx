@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useMyProfileQuery } from "@/features/profile/profileApi";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
@@ -99,5 +99,13 @@ export default function PaymentSuccessPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-4">Loading...</div>}>
+      <PaymentSuccessContent />
+    </React.Suspense>
   );
 }
