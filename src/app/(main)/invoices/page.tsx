@@ -11,7 +11,7 @@ import { useGetMyInvoicesQuery, usePayInvoiceMutation } from "@/features/invoice
 import { Loader2, RefreshCw } from "lucide-react";
 
 export default function InvoicesPage() {
-  const [activeTab, setActiveTab] = useState<FilterTab>("All Invoices");
+  const [activeTab, setActiveTab] = useState<FilterTab>("All");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
@@ -122,6 +122,8 @@ export default function InvoicesPage() {
       (inv) => inv.status === "Pending" || inv.status === "Deposit" || inv.status === "Unpaid"
     ).length;
 
+    const dueCount = invoices.filter((inv) => inv.status !== "Paid").length;
+
     const paidCount = invoices.filter((inv) => inv.status === "Paid").length;
 
     const totalBalanceDue = invoices
@@ -137,6 +139,7 @@ export default function InvoicesPage() {
       totalCount,
       overdueCount,
       pendingCount,
+      dueCount,
       paidCount,
       totalBalanceDue,
       paidHistoryAmount,
@@ -148,7 +151,9 @@ export default function InvoicesPage() {
     return invoices.filter((inv) => {
       // 1. Tab filter
       let matchesTab = true;
-      if (activeTab === "Pending") {
+      if (activeTab === "Due") {
+        matchesTab = inv.status !== "Paid";
+      } else if (activeTab === "Awaiting Approval") {
         matchesTab = inv.status === "Pending" || inv.status === "Deposit" || inv.status === "Unpaid";
       } else if (activeTab === "Overdue") {
         matchesTab = inv.status === "Overdue";
@@ -207,6 +212,9 @@ export default function InvoicesPage() {
           <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
             Track your maintenance expenses, approve outstanding balances, and pay invoices via Stripe.
           </p>
+          <p className="text-xs font-semibold text-[#5B1B95] mt-0.5">
+            Payment Terms: Payment due within 7 days of invoice date.
+          </p>
         </div>
 
         <button
@@ -236,7 +244,8 @@ export default function InvoicesPage() {
         onSearchChange={setSearchTerm}
         counts={{
           all: stats.totalCount,
-          pending: stats.pendingCount,
+          due: stats.dueCount,
+          awaitingApproval: stats.pendingCount,
           overdue: stats.overdueCount,
           paid: stats.paidCount,
         }}

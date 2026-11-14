@@ -49,42 +49,88 @@ export default function BillingTab() {
 
   const isSubscribed = !!user?.subscribe || subscription?.status === "active";
 
-  // 1. Current Plan Name
-  const currentPlanName =
+  // Check if active subscription is an approved Enterprise Plan
+  const isEnterprise = Boolean(
+    subscription?.isEnterprise ||
+    user?.subscription?.isEnterprise ||
+    matchedPlan?.planType === "enterprise" ||
+    subscription?.enterpriseData ||
+    user?.subscription?.enterpriseData
+  );
+
+  const enterpriseData = subscription?.enterpriseData || user?.subscription?.enterpriseData;
+
+  // Custom price set by Admin upon approving enterprise request
+  const enterpriseApprovedPrice =
+    enterpriseData?.totalMonthlySubscription ??
+    subscription?.price ??
+    user?.subscription?.price ??
+    (enterpriseData?.numberOfUnits && enterpriseData?.perUnitFee
+      ? enterpriseData.numberOfUnits * enterpriseData.perUnitFee
+      : 0);
+
+  const enterprisePlanName =
+    enterpriseData?.planName ||
     matchedPlan?.title ||
-    matchedPlan?.name ||
-    (matchedPlan?.planType ? matchedPlan.planType.toUpperCase() : null) ||
-    (isSubscribed ? "Active Workspace Plan" : "No Active Plan");
+    "Enterprise Custom Plan";
+
+  const enterprisePerUnitFee =
+    enterpriseData?.perUnitFee ??
+    (matchedPlan?.unitPrice !== undefined && matchedPlan?.unitPrice !== null
+      ? Number(matchedPlan.unitPrice)
+      : 0);
+
+  const enterpriseUnits =
+    enterpriseData?.numberOfUnits ??
+    Number(user?.profile?.activeUnits ?? user?.totalUnitsUsed ?? 0);
+
+  // 1. Current Plan Name
+  const currentPlanName = isEnterprise
+    ? enterprisePlanName
+    : matchedPlan?.title ||
+      matchedPlan?.name ||
+      (matchedPlan?.planType ? matchedPlan.planType.toUpperCase() : null) ||
+      (isSubscribed ? "Active Workspace Plan" : "No Active Plan");
 
   // 2. Unit Price
-  const unitPrice =
-    matchedPlan?.unitPrice !== undefined && matchedPlan?.unitPrice !== null
-      ? Number(matchedPlan.unitPrice)
-      : matchedPlan?.planType === "pro"
-      ? 2.0
-      : matchedPlan?.planType === "prime"
-      ? 1.0
-      : matchedPlan?.price !== undefined
-      ? Number(matchedPlan.price)
-      : 0;
+  const unitPrice = isEnterprise
+    ? Number(enterprisePerUnitFee)
+    : matchedPlan?.unitPrice !== undefined && matchedPlan?.unitPrice !== null
+    ? Number(matchedPlan.unitPrice)
+    : matchedPlan?.planType === "pro"
+    ? 2.0
+    : matchedPlan?.planType === "prime"
+    ? 1.0
+    : matchedPlan?.price !== undefined
+    ? Number(matchedPlan.price)
+    : 0;
 
-  // 3. Min Price (Monthly Minimum)
-  const minimumPrice =
-    matchedPlan?.minimumPrice !== undefined && matchedPlan?.minimumPrice !== null
-      ? Number(matchedPlan.minimumPrice)
-      : matchedPlan?.price !== undefined
-      ? Number(matchedPlan.price)
-      : matchedPlan?.planType === "pro"
-      ? 2000
-      : matchedPlan?.planType === "prime"
-      ? 500
-      : 0;
+  // 3. Min Price (Monthly Minimum / Approved Base Rate)
+  const minimumPrice = isEnterprise
+    ? Number(enterpriseApprovedPrice)
+    : matchedPlan?.minimumPrice !== undefined && matchedPlan?.minimumPrice !== null
+    ? Number(matchedPlan.minimumPrice)
+    : matchedPlan?.price !== undefined
+    ? Number(matchedPlan.price)
+    : matchedPlan?.planType === "pro"
+    ? 2000
+    : matchedPlan?.planType === "prime"
+    ? 500
+    : 0;
 
   // 4. Current Active Units
-  const activeUnits = Number(user?.profile?.activeUnits ?? user?.totalUnitsUsed ?? 0);
+  const activeUnits = isEnterprise
+    ? Number(enterpriseUnits)
+    : Number(user?.profile?.activeUnits ?? user?.totalUnitsUsed ?? 0);
 
   // 5. Next Billing Date
-  const nextBillingDate = subscription?.currentPeriodEnd
+  const nextBillingDate = enterpriseData?.billingDate
+    ? new Date(enterpriseData.billingDate).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : subscription?.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
@@ -92,10 +138,12 @@ export default function BillingTab() {
       })
     : null;
 
-  // 6. Expected Bill Amount based on current plan
+  // 6. Expected Bill Amount: for Enterprise, strictly use Admin-approved price
   const calculatedByUnits = activeUnits * (unitPrice || 0);
   const expectedBillAmount = isSubscribed
-    ? unitPrice > 0
+    ? isEnterprise
+      ? Number(enterpriseApprovedPrice)
+      : unitPrice > 0
       ? Math.max(calculatedByUnits, minimumPrice || 0)
       : minimumPrice || subscription?.price || 0
     : 0;
@@ -176,12 +224,14 @@ export default function BillingTab() {
                         : "bg-amber-100 text-amber-800 border border-amber-300"
                     }`}
                   >
-                    {isSubscribed ? "Active" : "Inactive"}
+                    {isSubscribed ? (isEnterprise ? "Enterprise SLA Active" : "Active") : "Inactive"}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 font-normal mt-0.5">
-                  {matchedPlan?.description ||
-                    "Property management workspace, work order automation, and contractor bidding tools."}
+                  {isEnterprise
+                    ? "Custom Enterprise SLA contract with agreed volume pricing set and approved by Administrator."
+                    : matchedPlan?.description ||
+                      "Property management workspace, work order automation, and contractor bidding tools."}
                 </p>
               </div>
             </div>
@@ -219,7 +269,7 @@ export default function BillingTab() {
               <div className="flex items-center gap-1.5 text-gray-500">
                 <Layers className="w-3.5 h-3.5 text-[#6B1294]" />
                 <span className="text-[11px] font-bold uppercase tracking-wider">
-                  Monthly Minimum
+                  {isEnterprise ? "Approved Monthly Base" : "Monthly Minimum"}
                 </span>
               </div>
               <div className="text-base font-bold text-gray-900">
@@ -233,12 +283,12 @@ export default function BillingTab() {
               <div className="flex items-center gap-1.5 text-gray-500">
                 <Building2 className="w-3.5 h-3.5 text-[#6B1294]" />
                 <span className="text-[11px] font-bold uppercase tracking-wider">
-                  Active Units
+                  {isEnterprise ? "Allocated Units" : "Active Units"}
                 </span>
               </div>
               <div className="text-base font-bold text-gray-900">
                 {activeUnits.toLocaleString()}
-                <span className="text-[11px] font-normal text-gray-500 ml-1">active units</span>
+                <span className="text-[11px] font-normal text-gray-500 ml-1">units</span>
               </div>
             </div>
 
@@ -260,11 +310,13 @@ export default function BillingTab() {
           <div className="bg-gradient-to-r from-purple-100/80 via-purple-50/70 to-white border border-purple-200/90 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#5B1B95] block">
-                Expected Bill Amount
+                {isEnterprise ? "Approved Next Billing Amount" : "Expected Bill Amount"}
               </span>
               <p className="text-xs text-gray-600 font-normal mt-0.5">
-                Calculated based on {activeUnits.toLocaleString()} active units × ${unitPrice.toFixed(2)}
-                {minimumPrice > 0 ? ` (Monthly minimum: $${minimumPrice.toLocaleString()})` : ""}
+                {isEnterprise
+                  ? `Approved Enterprise rate based on ${activeUnits.toLocaleString()} units × $${unitPrice.toFixed(2)}/unit (Set by Admin upon request approval)`
+                  : `Calculated based on ${activeUnits.toLocaleString()} active units × $${unitPrice.toFixed(2)}` +
+                    (minimumPrice > 0 ? ` (Monthly minimum: $${minimumPrice.toLocaleString()})` : "")}
               </p>
             </div>
 
@@ -278,100 +330,104 @@ export default function BillingTab() {
 
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <button
-            type="button"
-            onClick={handleChangePlan}
-            className="bg-white hover:bg-gray-100 text-gray-800 font-semibold px-5 py-2.5 rounded-lg text-xs sm:text-sm border border-gray-300 transition-colors cursor-pointer"
-          >
-            {isSubscribed ? "Change Plan" : "Select a Plan"}
-          </button>
+        {/* Action Buttons (Only for Pro & Prime, not Enterprise) */}
+        {!isEnterprise && (
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleChangePlan}
+              className="bg-white hover:bg-gray-100 text-gray-800 font-semibold px-5 py-2.5 rounded-lg text-xs sm:text-sm border border-gray-300 transition-colors cursor-pointer"
+            >
+              {isSubscribed ? "Change Plan" : "Select a Plan"}
+            </button>
+
+            {isSubscribed && (
+              <button
+                type="button"
+                onClick={handleCancelPlan}
+                disabled={isCancelling}
+                className="bg-red-50/80 hover:bg-red-100 text-[#E53935] border border-red-300 font-semibold px-5 py-2.5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isCancelling ? "Processing..." : "Cancel Auto-Renewal"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 2. Payment Method Card (Only for Pro & Prime, not Enterprise) */}
+      {!isEnterprise && (
+        <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-gray-900 tracking-tight">
+              Payment Method & Invoicing
+            </h3>
+
+            <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Secured by Stripe</span>
+            </span>
+          </div>
+
+          {paymentMethod ? (
+            <div className="bg-white border border-gray-300/60 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-black text-white px-2.5 py-1 text-xs font-black tracking-widest rounded-md shrink-0 uppercase">
+                  {paymentMethod.brand || "CARD"}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {paymentMethod.brand?.toUpperCase() || "Card"} ending in {paymentMethod.last4 || "••••"}
+                  </p>
+                  {paymentMethod.expMonth && paymentMethod.expYear && (
+                    <p className="text-xs text-gray-500 font-normal mt-0.5">
+                      Expires {String(paymentMethod.expMonth).padStart(2, "0")}/{paymentMethod.expYear}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                Default
+              </span>
+            </div>
+          ) : (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-600 flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-gray-500 shrink-0" />
+              <span>
+                {isSubscribed
+                  ? "Your card information is stored safely in your Stripe customer account."
+                  : "No payment method configured yet. Select a plan to connect your billing method."}
+              </span>
+            </div>
+          )}
 
           {isSubscribed && (
             <button
               type="button"
-              onClick={handleCancelPlan}
-              disabled={isCancelling}
-              className="bg-red-50/80 hover:bg-red-100 text-[#E53935] border border-red-300 font-semibold px-5 py-2.5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+              onClick={handleOpenBillingPortal}
+              disabled={isOpeningPortal}
+              className="bg-[#E1D4F4] hover:bg-purple-200 text-[#5B1B95] font-semibold px-4 py-2.5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2 border border-purple-200 w-fit disabled:opacity-50"
             >
-              {isCancelling ? "Processing..." : "Cancel Auto-Renewal"}
+              {isOpeningPortal ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ExternalLink className="w-4 h-4" />
+              )}
+              <span>Manage Cards & Invoices on Stripe</span>
             </button>
           )}
         </div>
-      </div>
-
-      {/* 2. Payment Method Card */}
-      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-900 tracking-tight">
-            Payment Method & Invoicing
-          </h3>
-
-          <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Secured by Stripe</span>
-          </span>
-        </div>
-
-        {paymentMethod ? (
-          <div className="bg-white border border-gray-300/60 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-black text-white px-2.5 py-1 text-xs font-black tracking-widest rounded-md shrink-0 uppercase">
-                {paymentMethod.brand || "CARD"}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {paymentMethod.brand?.toUpperCase() || "Card"} ending in {paymentMethod.last4 || "••••"}
-                </p>
-                {paymentMethod.expMonth && paymentMethod.expYear && (
-                  <p className="text-xs text-gray-500 font-normal mt-0.5">
-                    Expires {String(paymentMethod.expMonth).padStart(2, "0")}/{paymentMethod.expYear}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-              Default
-            </span>
-          </div>
-        ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-600 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-gray-500 shrink-0" />
-            <span>
-              {isSubscribed
-                ? "Your card information is stored safely in your Stripe customer account."
-                : "No payment method configured yet. Select a plan to connect your billing method."}
-            </span>
-          </div>
-        )}
-
-        {isSubscribed && (
-          <button
-            type="button"
-            onClick={handleOpenBillingPortal}
-            disabled={isOpeningPortal}
-            className="bg-[#E1D4F4] hover:bg-purple-200 text-[#5B1B95] font-semibold px-4 py-2.5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2 border border-purple-200 w-fit disabled:opacity-50"
-          >
-            {isOpeningPortal ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <ExternalLink className="w-4 h-4" />
-            )}
-            <span>Manage Cards & Invoices on Stripe</span>
-          </button>
-        )}
-      </div>
+      )}
 
       {/* 3. Maintenance Invoices Quick Link */}
       <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-bold text-gray-900 tracking-tight">
-            Maintenance Invoices & Contractor Payouts
+            Service Invoices
           </h3>
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-            View your work order maintenance invoices, outstanding balances, and contractor receipts.
+            View and pay invoices for completed service requests.
           </p>
         </div>
 

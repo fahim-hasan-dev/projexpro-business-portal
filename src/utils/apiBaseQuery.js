@@ -20,14 +20,21 @@ const rawBaseQuery = fetchBaseQuery({
 const isTokenExpiredOrUnauthorized = (result) => {
   const status = result?.error?.status ?? result?.error?.originalStatus;
   const dataStatusCode = result?.error?.data?.statusCode ?? result?.data?.statusCode;
-  const message = (result?.error?.data?.message || result?.data?.message || '').toLowerCase();
+  const message = (
+    result?.error?.data?.message ||
+    result?.data?.message ||
+    result?.error?.message ||
+    ''
+  ).toLowerCase();
 
   return (
     status === 401 ||
     dataStatusCode === 401 ||
     message.includes('access token has expired') ||
+    message.includes('token has expired') ||
+    message.includes('token expired') ||
     message.includes('jwt expired') ||
-    message.includes('token expired')
+    message.includes('unauthorized')
   );
 };
 

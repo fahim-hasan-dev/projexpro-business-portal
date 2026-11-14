@@ -55,7 +55,19 @@ export default function ServiceRequestTable({
 
               {/* 2. PROPERTY NAME (Title + Property subtitle) */}
               <td className="py-4 px-5">
-                <div className="font-bold text-gray-900">{req.title}</div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-gray-900">{req.title}</span>
+                  {req.unit && (
+                    <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-[10px] font-semibold border border-gray-200">
+                      {req.unit}
+                    </span>
+                  )}
+                  {req.serviceCategory && (
+                    <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-semibold border border-purple-200">
+                      {req.serviceCategory}
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-gray-500 font-normal mt-0.5">{req.property}</div>
               </td>
 

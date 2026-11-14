@@ -6,6 +6,34 @@ import {
   IPropertyCategory,
 } from "@/types/property";
 
+export interface IPropertyManagerOverviewStats {
+  approvalsRequired: number;
+  activeJobs: number;
+  urgentJobs: number;
+  completedJobs: number;
+  completedThisMonth: number;
+  totalProperties: number;
+  totalUnits: number;
+}
+
+export interface IServiceRequestMonthlyVolume {
+  month: string;
+  volume: number;
+}
+
+export interface IRecentActivityItem {
+  id: string;
+  text: string;
+  time: string;
+  type: "wrench" | "building" | "receipt" | "check";
+}
+
+export interface IPropertyManagerOverview {
+  stats: IPropertyManagerOverviewStats;
+  serviceRequestsVolume: IServiceRequestMonthlyVolume[];
+  recentActivities: IRecentActivityItem[];
+}
+
 export const propertyApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Get all properties belonging to the logged-in Property Manager
@@ -133,6 +161,18 @@ export const propertyApi = baseApi.injectEndpoints({
       }),
       providesTags: (result, error, parentId) => [{ type: "Category", id: parentId }],
     }),
+
+    // Get Property Manager Dashboard Overview (Live real-time stats, volume, and activities)
+    getPropertyManagerOverview: builder.query<
+      { statusCode: number; success: boolean; message: string; data: IPropertyManagerOverview },
+      void
+    >({
+      query: () => ({
+        url: "/property/overview",
+        method: "GET",
+      }),
+      providesTags: ["Property", "ServiceRequest"],
+    }),
   }),
 });
 
@@ -145,4 +185,5 @@ export const {
   useDeletePropertyMutation,
   useGetCategoriesQuery,
   useGetSubCategoriesQuery,
+  useGetPropertyManagerOverviewQuery,
 } = propertyApi;

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Loader2 } from "lucide-react";
 import { ServiceRequest, StatusType, PriorityType, IServiceRequest } from "@/types/serviceRequest";
 import ServiceRequestHeader from "@/components/service-requests/ServiceRequestHeader";
@@ -10,8 +10,12 @@ import ServiceRequestTable from "@/components/service-requests/ServiceRequestTab
 import CreateServiceRequestModal from "@/components/service-requests/CreateServiceRequestModal";
 import { useGetAllServiceRequestsQuery } from "@/features/serviceRequest/serviceRequestApi";
 
-export default function ServiceRequestsPage() {
+function ServiceRequestsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const filterParam = searchParams.get("filter") || "";
+  const isCanceledView = filterParam === "canceled";
+
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
@@ -61,6 +65,9 @@ export default function ServiceRequestsPage() {
         title: r.issueTitle,
         property: propObj?.name || propObj?.title || "Property",
         address: propObj?.address || "",
+        unit: r.unit,
+        serviceCategory: r.serviceCategory,
+        accessInstructions: r.accessInstructions,
         priority: (r.priority || "Medium") as PriorityType,
         status: (r.status || "Pending") as StatusType,
         stage:
@@ -84,37 +91,45 @@ export default function ServiceRequestsPage() {
     });
   }, [rawRequests]);
 
-  // Counts for Stats Cards
-  const pendingCount = useMemo(
+  // Filter requests based on query param (e.g. Canceled view)
+  const displayedRequests = useMemo(() => {
+    if (isCanceledView) {
+      return mappedRequests.filter(
+        (r) =>
+          r.status === "Cancelled" ||
+          (r.status as string) === "Canceled" ||
+          r.status === "Rejected"
+      );
+    }
+    return mappedRequests;
+  }, [mappedRequests, isCanceledView]);
+
+  // Counts for 4 Stats Cards matching Super Admin style
+  const submittedCount = useMemo(
     () => rawRequests.filter((r) => r.status === "Pending").length,
-    [rawRequests]
-  );
-  const assignedCount = useMemo(
-    () => rawRequests.filter((r) => r.status === "Assigned").length,
     [rawRequests]
   );
   const inProgressCount = useMemo(
     () =>
       rawRequests.filter(
-        (r) => r.status === "In Progress" || r.status === "Accepted"
+        (r) =>
+          r.status === "In Progress" ||
+          r.status === "Accepted" ||
+          r.status === "Assigned"
       ).length,
+    [rawRequests]
+  );
+  const awaitingApprovalCount = useMemo(
+    () => rawRequests.filter((r) => r.status === "Pending Approval").length,
     [rawRequests]
   );
   const completedCount = useMemo(
     () => rawRequests.filter((r) => r.status === "Completed").length,
     [rawRequests]
   );
-  const cancelledCount = useMemo(
-    () =>
-      rawRequests.filter(
-        (r) => r.status === "Cancelled" || r.status === "Rejected"
-      ).length,
-    [rawRequests]
-  );
 
   // Navigate to Track page using MongoDB _id
   const navigateToTrack = (idOrRequestNo: string) => {
-    // Find matching request to get its _id
     const matched = mappedRequests.find(
       (m) => m.id === idOrRequestNo || m._id === idOrRequestNo
     );
@@ -126,18 +141,25 @@ export default function ServiceRequestsPage() {
     <div className="space-y-6">
       {/* Header */}
       <ServiceRequestHeader
-        activeCount={mappedRequests.length}
+        activeCount={displayedRequests.length}
         onOpenModal={() => setIsModalOpen(true)}
+        title={isCanceledView ? "Canceled Requests" : "Service Requests"}
+        subTitle={
+          isCanceledView
+            ? "View service requests that were canceled before completion."
+            : "Track every service request from submission to resolution."
+        }
       />
 
-      {/* Stats Cards */}
-      <ServiceRequestStats
-        pendingCount={pendingCount}
-        assignedCount={assignedCount}
-        inProgressCount={inProgressCount}
-        completedCount={completedCount}
-        cancelledCount={cancelledCount}
-      />
+      {/* Stats Cards (4 Equal Boxes - hidden on Canceled view) */}
+      {!isCanceledView && (
+        <ServiceRequestStats
+          submittedCount={submittedCount}
+          inProgressCount={inProgressCount}
+          awaitingApprovalCount={awaitingApprovalCount}
+          completedCount={completedCount}
+        />
+      )}
 
       {/* Search Input Bar */}
       <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg p-3.5 sm:p-2">
@@ -161,7 +183,7 @@ export default function ServiceRequestsPage() {
         </div>
       ) : (
         <ServiceRequestTable
-          requests={mappedRequests}
+          requests={displayedRequests}
           onNavigateToTrack={navigateToTrack}
           onStatusChange={() => {}}
         />
@@ -174,5 +196,19 @@ export default function ServiceRequestsPage() {
         onSuccess={() => refetch()}
       />
     </div>
+  );
+}
+
+export default function ServiceRequestsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-sm font-semibold text-gray-500">
+          Loading service requests...
+        </div>
+      }
+    >
+      <ServiceRequestsContent />
+    </Suspense>
   );
 }

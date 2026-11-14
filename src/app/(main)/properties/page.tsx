@@ -98,6 +98,7 @@ export default function PropertiesPage() {
   const [formName, setFormName] = useState<string>("");
   const [formAddress, setFormAddress] = useState<string>("");
   const [formTotalUnits, setFormTotalUnits] = useState<string>("");
+  const [formTotalBuildings, setFormTotalBuildings] = useState<string>("");
   const [formUnitNumber, setFormUnitNumber] = useState<string>("");
   const [formFloorRange, setFormFloorRange] = useState<string>("");
   const [formStatus, setFormStatus] = useState<PropertyStatus>("Active");
@@ -214,6 +215,7 @@ export default function PropertiesPage() {
     setSelectedSubCategoryId("");
     setFormName("");
     setFormAddress("");
+    setFormTotalBuildings("");
     setFormTotalUnits("");
     setFormUnitNumber("");
     setFormFloorRange("");
@@ -246,6 +248,7 @@ export default function PropertiesPage() {
     setSelectedSubCategoryId(subCatId || "");
     setFormName(prop.name || "");
     setFormAddress(prop.address || "");
+    setFormTotalBuildings(prop.totalBuildings ? String(prop.totalBuildings) : "");
     setFormTotalUnits(prop.totalUnits ? String(prop.totalUnits) : "");
     setFormUnitNumber(prop.unitSuiteNo || "");
     setFormFloorRange(prop.floorRange || "");
@@ -301,6 +304,7 @@ export default function PropertiesPage() {
         category: targetCategoryId,
         subCategory: targetSubCategoryId,
         unitSuiteNo: formUnitNumber.trim() || undefined,
+        totalBuildings: formTotalBuildings ? Number(formTotalBuildings) : undefined,
         totalUnits: formTotalUnits ? Number(formTotalUnits) : 1,
         floorRange: formFloorRange.trim() || undefined,
         status: formStatus,
@@ -396,7 +400,7 @@ export default function PropertiesPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search properties by name, address, or category..."
+            placeholder="Search by name, address, or property type"
             className="w-full pl-10 pr-4 py-2.5 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#5B1B95] transition-all"
           />
         </div>
@@ -409,7 +413,7 @@ export default function PropertiesPage() {
               all: "All Properties",
               residential: "Residential",
               commercial: "Commercial",
-              "mixed-use": "Mixed-use",
+              "mixed-use": "Mixed-Use",
             };
             return (
               <button
@@ -820,7 +824,7 @@ export default function PropertiesPage() {
                     }`}
                   >
                     <Layers className="w-4 h-4" />
-                    <span>Mixed-use</span>
+                    <span>Mixed-Use</span>
                   </button>
                 </div>
               </div>
@@ -828,7 +832,7 @@ export default function PropertiesPage() {
               {/* Sub-Category Dropdown */}
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                  Sub-Category *
+                  Property Subtype *
                 </label>
                 <Select
                   value={selectedSubCategoryId || undefined}
@@ -839,7 +843,7 @@ export default function PropertiesPage() {
                   disabled={isSubCatsLoading}
                 >
                   <SelectTrigger className="w-full h-[48px] px-4 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg text-sm text-gray-900 focus:outline-none transition-all cursor-pointer shadow-none">
-                    <SelectValue placeholder={isSubCatsLoading ? "Loading sub-categories..." : "Select Sub-Category"} />
+                    <SelectValue placeholder={isSubCatsLoading ? "Loading sub-categories..." : "Select Property Subtype"} />
                   </SelectTrigger>
                   <SelectContent className="bg-white rounded-lg border border-gray-200 shadow-lg z-[60]">
                     {subCategories.length > 0 ? (
@@ -898,17 +902,18 @@ export default function PropertiesPage() {
                 {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
               </div>
 
-              {/* Unit / Suite # & Total Units (2 Cols) */}
+              {/* Total Number of Buildings & Total Number of Units (2 Cols) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                    Unit / Suite #
+                    Total Number of Buildings
                   </label>
                   <input
-                    type="text"
-                    value={formUnitNumber}
-                    onChange={(e) => setFormUnitNumber(e.target.value)}
-                    placeholder="e.g. Suite 402, Unit 1A"
+                    type="number"
+                    min="1"
+                    value={formTotalBuildings}
+                    onChange={(e) => setFormTotalBuildings(e.target.value)}
+                    placeholder="e.g. 3"
                     className="w-full px-4 py-3 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#5B1B95] transition-all"
                   />
                 </div>
@@ -922,7 +927,7 @@ export default function PropertiesPage() {
                     min="1"
                     value={formTotalUnits}
                     onChange={(e) => setFormTotalUnits(e.target.value)}
-                    placeholder="e.g. 24"
+                    placeholder="e.g. 120"
                     className="w-full px-4 py-3 bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#5B1B95] transition-all"
                   />
                 </div>

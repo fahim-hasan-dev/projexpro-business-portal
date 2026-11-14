@@ -8,6 +8,7 @@ export type StatusType =
   | "In Progress"
   | "Pending Approval"
   | "Completed"
+  | "Canceled"
   | "Cancelled";
 
 export interface IServiceRequestProperty {
@@ -78,6 +79,9 @@ export interface IServiceRequest {
   isOccupied: boolean;
   tenantName?: string;
   tenantPhone?: string;
+  unit?: string;
+  serviceCategory?: string;
+  accessInstructions?: string;
   locationDetails?: string;
   images?: string[];
   status: StatusType;
@@ -121,6 +125,9 @@ export interface ICreateServiceRequestPayload {
   issueTitle: string;
   description: string;
   priority?: PriorityType;
+  unit?: string;
+  serviceCategory?: string;
+  accessInstructions?: string;
   isOccupied?: boolean;
   tenantName?: string;
   tenantPhone?: string;
@@ -142,6 +149,9 @@ export interface ServiceRequest {
   title: string;
   property: string;
   address: string;
+  unit?: string;
+  serviceCategory?: string;
+  accessInstructions?: string;
   priority: PriorityType;
   status: StatusType;
   stage: number;

@@ -264,6 +264,12 @@ export default function InvoiceDetailModal({
           </div>
 
           {/* Payment Terms Notice */}
+          <div className="bg-purple-50/80 border border-purple-100 rounded-lg p-2.5 text-center">
+            <p className="text-xs font-semibold text-[#5B1B95]">
+              Payment Terms: Payment due within 7 days of invoice date.
+            </p>
+          </div>
+
           {!isPaid && (
             <p className="text-[11px] text-gray-400 font-normal leading-relaxed text-center pt-1">
               <span className="font-semibold text-gray-600">Payment Security:</span> Powered by Stripe.

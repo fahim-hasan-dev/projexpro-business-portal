@@ -6,20 +6,24 @@ import { Plus } from "lucide-react";
 interface ServiceRequestHeaderProps {
   activeCount: number;
   onOpenModal: () => void;
+  title?: string;
+  subTitle?: string;
 }
 
 export default function ServiceRequestHeader({
   activeCount,
   onOpenModal,
+  title = "Service Requests",
+  subTitle = "Track every service request from submission to resolution.",
 }: ServiceRequestHeaderProps) {
   return (
     <div className="flex flex-row items-center justify-between gap-3">
       <div>
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-          Service Requests
+          {title}
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 font-normal mt-0.5 sm:mt-1">
-          {activeCount} Active Work Orders . Track Job-site updates & progress in real-time.
+          {subTitle}
         </p>
       </div>
 

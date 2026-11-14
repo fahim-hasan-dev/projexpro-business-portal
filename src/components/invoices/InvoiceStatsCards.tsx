@@ -16,7 +16,6 @@ export default function InvoiceStatsCards({
   pendingCount = 5,
   paidHistoryAmount = 54000,
 }: InvoiceStatsProps) {
-  // Format Currency
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -26,64 +25,72 @@ export default function InvoiceStatsCards({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* 1. Total Balance Due Card (Purple - Matches Balance Due Status) */}
-      <div className="bg-[#8E25E3] text-white rounded-lg p-5 shadow-xs flex items-center justify-between transition-all hover:shadow-md">
-        <div>
-          <p className="text-xs sm:text-sm font-medium text-white/90">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {/* 1. Total Balance Due Card */}
+      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 min-h-[120px] shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
+        <div className="flex items-start justify-between">
+          <span className="text-xs sm:text-sm font-medium text-gray-500">
             Total Balance Due
-          </p>
-          <h3 className="text-3xl font-bold mt-2 tracking-tight">
+          </span>
+          <div className="p-2.5 rounded-lg bg-purple-100/90 text-[#8E25E3]">
+            <DollarSign className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-3xl font-bold tracking-tight text-[#8E25E3]">
             {formatCurrency(totalBalanceDue)}
           </h3>
         </div>
-        <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-          <CheckCircle2 className="w-6 h-6 stroke-[2.2]" />
-        </div>
       </div>
 
-      {/* 2. Overdue Invoices Card (Red - Matches Overdue Status) */}
-      <div className="bg-[#E53935] text-white rounded-lg p-5 shadow-xs flex items-center justify-between transition-all hover:shadow-md">
-        <div>
-          <p className="text-xs sm:text-sm font-medium text-white/90">
+      {/* 2. Overdue Invoices Card */}
+      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 min-h-[120px] shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
+        <div className="flex items-start justify-between">
+          <span className="text-xs sm:text-sm font-medium text-gray-500">
             Overdue Invoices
-          </p>
-          <h3 className="text-3xl font-bold mt-2 tracking-tight">
+          </span>
+          <div className="p-2.5 rounded-lg bg-red-100/90 text-[#E53935]">
+            <AlertCircle className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-3xl font-bold tracking-tight text-[#E53935]">
             {overdueCount}
           </h3>
         </div>
-        <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-          <AlertCircle className="w-6 h-6 stroke-[2.2]" />
-        </div>
       </div>
 
-      {/* 3. Pending Approvals Card (Amber/Orange - Matches Deposit/Pending Status) */}
-      <div className="bg-[#D97706] text-white rounded-lg p-5 shadow-xs flex items-center justify-between transition-all hover:shadow-md">
-        <div>
-          <p className="text-xs sm:text-sm font-medium text-white/90">
-            Pending Approvals
-          </p>
-          <h3 className="text-3xl font-bold mt-2 tracking-tight">
+      {/* 3. Awaiting Approval Card */}
+      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 min-h-[120px] shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
+        <div className="flex items-start justify-between">
+          <span className="text-xs sm:text-sm font-medium text-gray-500">
+            Awaiting Approval
+          </span>
+          <div className="p-2.5 rounded-lg bg-amber-100/90 text-[#D97706]">
+            <Clock className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-3xl font-bold tracking-tight text-[#D97706]">
             {pendingCount}
           </h3>
         </div>
-        <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-          <Clock className="w-6 h-6 stroke-[2.2]" />
-        </div>
       </div>
 
-      {/* 4. Paid History Card (Green - Matches Paid Status) */}
-      <div className="bg-[#16A34A] text-white rounded-lg p-5 shadow-xs flex items-center justify-between transition-all hover:shadow-md">
-        <div>
-          <p className="text-xs sm:text-sm font-medium text-white/90">
-            Paid History
-          </p>
-          <h3 className="text-3xl font-bold mt-2 tracking-tight">
+      {/* 4. Total Paid Card */}
+      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-2xl p-5 min-h-[120px] shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
+        <div className="flex items-start justify-between">
+          <span className="text-xs sm:text-sm font-medium text-gray-500">
+            Total Paid
+          </span>
+          <div className="p-2.5 rounded-lg bg-green-100/90 text-[#16A34A]">
+            <CheckCircle2 className="w-5 h-5 stroke-[2.2]" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-3xl font-bold tracking-tight text-[#16A34A]">
             {formatCurrency(paidHistoryAmount)}
           </h3>
-        </div>
-        <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-          <DollarSign className="w-6 h-6 stroke-[2.2]" />
         </div>
       </div>
     </div>

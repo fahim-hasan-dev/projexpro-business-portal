@@ -4,10 +4,28 @@ import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Save, Loader2, Camera } from "lucide-react";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   useMyProfileQuery,
   useUpdateProfileByPropertyManagerMutation,
 } from "@/features/profile/profileApi";
 import { getPropertyImageUrl } from "@/utils/propertyUtils";
+
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+  "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
+  "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+  "Wisconsin", "Wyoming", "District of Columbia"
+];
 
 export default function ProfileTab() {
   const { data: profileRes, isLoading: isFetchingProfile } = useMyProfileQuery(undefined);
@@ -223,7 +241,7 @@ export default function ProfileTab() {
             {displayName}
           </h2>
           <p className="text-xs text-gray-500 font-medium mt-0.5">
-            {user?.role === "property_manager" ? "Property Manager" : "User"} · ProjexPro
+            Property Manager{profileData.parentCompanyName ? `, ${profileData.parentCompanyName}` : ""}
           </p>
           <button
             type="button"
@@ -364,21 +382,21 @@ export default function ProfileTab() {
         <div className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Parent Company Name
+              Registered Business Name / (DBA) Doing Business As
             </label>
             <input
               type="text"
               name="parentCompanyName"
               value={profileData.parentCompanyName}
               onChange={handleChange}
-              placeholder="e.g. ProjexPro Management LLC"
+              placeholder="e.g. Sunset Apartments LLC / ProjexPro Management"
               className="w-full px-4 py-3 bg-white border border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 rounded-lg text-sm text-gray-900 focus:outline-none transition-all"
             />
           </div>
 
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Parent Company Address
+              Company Address
             </label>
             <input
               type="text"
@@ -409,14 +427,24 @@ export default function ProfileTab() {
               <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
                 State
               </label>
-              <input
-                type="text"
-                name="state"
+              <Select
                 value={profileData.state}
-                onChange={handleChange}
-                placeholder="e.g. CA"
-                className="w-full px-4 py-3 bg-white border border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 rounded-lg text-sm text-gray-900 focus:outline-none transition-all"
-              />
+                onValueChange={(val) => {
+                  setProfileData((prev) => ({ ...prev, state: val }));
+                  setErrors((prev) => ({ ...prev, state: "" }));
+                }}
+              >
+                <SelectTrigger className="w-full h-[46px] px-4 py-3 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 transition-all cursor-pointer shadow-none">
+                  <SelectValue placeholder="Select State" />
+                </SelectTrigger>
+                <SelectContent className="bg-white rounded-lg border border-gray-200 shadow-lg z-[60] max-h-60">
+                  {US_STATES.map((st) => (
+                    <SelectItem key={st} value={st} className="py-2 cursor-pointer">
+                      {st}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -437,7 +465,7 @@ export default function ProfileTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-                Website Address
+                Website
               </label>
               <input
                 type="text"

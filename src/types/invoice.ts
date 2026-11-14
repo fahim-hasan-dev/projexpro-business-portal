@@ -1,6 +1,7 @@
 export type InvoiceStatus =
   | "Unpaid"
   | "Paid"
+  | "Canceled"
   | "Cancelled"
   | "Deposit"
   | "Pending"

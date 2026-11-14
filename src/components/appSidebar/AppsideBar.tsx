@@ -21,7 +21,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { removeToken } from "@/utils/storage";
@@ -43,16 +43,29 @@ function ProjexProLogo() {
   );
 }
 
+type SidebarSubItem = {
+  name: string;
+  path: string;
+};
+
 type SidebarItem = {
   name: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
+  subItems?: SidebarSubItem[];
 };
 
 const defaultSidebars: SidebarItem[] = [
   { name: "Dashboard", path: "/", icon: LayoutGrid },
   { name: "Properties", path: "/properties", icon: Building2 },
-  { name: "Service Requests", path: "/service-requests", icon: Wrench },
+  {
+    name: "Service Requests",
+    path: "/service-requests",
+    icon: Wrench,
+    subItems: [
+      { name: "Canceled Requests", path: "/service-requests?filter=canceled" },
+    ],
+  },
   { name: "Invoices & Payments", path: "/invoices", icon: Receipt },
   { name: "Settings", path: "/settings", icon: Settings },
 ];
@@ -72,12 +85,22 @@ export default function OptimusSidebar() {
 
   const dispatch = useDispatch();
 
+  const [currentSearch, setCurrentSearch] = useState<string>("");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentSearch(window.location.search);
+    }
+  }, [pathname]);
+
   const isServiceProvider = pathname.startsWith("/services_provider");
   const sidebars = isServiceProvider ? serviceProviderSidebars : defaultSidebars;
 
   const isActive = (path: string) => {
     if (path === "/" || path === "/services_provider/overview") {
       return pathname === path;
+    }
+    if (path === "/service-requests") {
+      return pathname.startsWith("/service-requests") && !currentSearch.includes("filter=canceled");
     }
     return pathname.startsWith(path);
   };
@@ -115,7 +138,13 @@ export default function OptimusSidebar() {
                       : "text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 font-medium"
                       }`}
                   >
-                    <Link href={item.path} className="flex items-center justify-between w-full">
+                    <Link
+                      href={item.path}
+                      onClick={() => {
+                        if (item.path === "/service-requests") setCurrentSearch("");
+                      }}
+                      className="flex items-center justify-between w-full"
+                    >
                       <div className="flex items-center gap-3">
                         <item.icon className={`h-5 w-5 ${active ? "text-[#8E25E3]" : "text-gray-600"}`} />
                         <span className="text-sm font-medium">{item.name}</span>
@@ -123,6 +152,31 @@ export default function OptimusSidebar() {
                       {active && <span className="w-2 h-2 rounded-full bg-[#8E25E3]" />}
                     </Link>
                   </SidebarMenuButton>
+
+                  {/* Sub-items (e.g. Canceled Requests under Service Requests) */}
+                  {item.subItems && pathname.startsWith(item.path) && (
+                    <div className="ml-7 pl-3 border-l-2 border-purple-200 mt-1 space-y-1">
+                      {item.subItems.map((sub) => {
+                        const isSubActive =
+                          pathname === "/service-requests" && currentSearch.includes("filter=canceled");
+                        return (
+                          <Link
+                            key={sub.name}
+                            href={sub.path}
+                            onClick={() => setCurrentSearch("?filter=canceled")}
+                            className={`block px-3 py-1.5 text-xs rounded-md transition-colors ${
+                              isSubActive
+                                ? "bg-[#E1D4F4] text-[#8E25E3] font-bold"
+                                : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            }`}
+                            title="View service requests that were canceled before completion."
+                          >
+                            {sub.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </SidebarMenuItem>
               );
             })}

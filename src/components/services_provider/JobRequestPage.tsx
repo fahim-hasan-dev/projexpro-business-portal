@@ -23,6 +23,7 @@ import {
   ZoomIn,
   Building,
   Receipt,
+  Key,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -431,15 +432,29 @@ export default function JobRequestPage(): React.ReactElement {
                         {job.requestNo || job._id.slice(-6).toUpperCase()}
                       </td>
                       <td className="py-4 px-5 sm:px-6">
-                        <div className="text-sm font-bold text-gray-900 leading-tight">
-                          {propertyName}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm font-bold text-gray-900 leading-tight">
+                            {propertyName}
+                          </span>
+                          {job.unit && (
+                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-[10px] font-semibold border border-gray-200">
+                              Unit: {job.unit}
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-gray-400 font-normal mt-0.5">
                           PM: {pmName}
                         </div>
                       </td>
                       <td className="py-4 px-5 sm:px-6 text-sm font-medium text-gray-700">
-                        {job.issueTitle}
+                        <div>
+                          <span>{job.issueTitle}</span>
+                          {job.serviceCategory && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-semibold border border-purple-200">
+                              {job.serviceCategory}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-5 sm:px-6 whitespace-nowrap">
                         {getPriorityBadge(job.priority)}
@@ -511,8 +526,18 @@ export default function JobRequestPage(): React.ReactElement {
 
             {/* Status & Dates */}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {getStatusBadge(currentSelectedJob.status)}
+                {currentSelectedJob.unit && (
+                  <span className="px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded-full border border-gray-200">
+                    Unit: {currentSelectedJob.unit}
+                  </span>
+                )}
+                {currentSelectedJob.serviceCategory && (
+                  <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-full border border-purple-200">
+                    {currentSelectedJob.serviceCategory}
+                  </span>
+                )}
                 {currentSelectedJob.createdAt && (
                   <span className="text-xs text-gray-500 font-medium flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -580,14 +605,32 @@ export default function JobRequestPage(): React.ReactElement {
                 <MapPin className="w-4 h-4 text-[#6B1294] shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
                   <span>{getPropertyAddress(currentSelectedJob.property) || "Address not provided"}</span>
+                  {currentSelectedJob.unit && (
+                    <span className="text-gray-700 block font-normal">
+                      Unit: <strong className="text-gray-900 font-semibold">{currentSelectedJob.unit}</strong>
+                    </span>
+                  )}
                   {currentSelectedJob.locationDetails && (
                     <span className="text-gray-600 block font-normal">
-                      Unit / Scope Location: <strong className="text-gray-900 font-semibold">{currentSelectedJob.locationDetails}</strong>
+                      Specific Location: <strong className="text-gray-900 font-semibold">{currentSelectedJob.locationDetails}</strong>
                     </span>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Access Instructions */}
+            {currentSelectedJob.accessInstructions && (
+              <div className="bg-amber-50/90 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+                <span className="text-[10px] font-bold text-amber-700 uppercase flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5" />
+                  Access Instructions
+                </span>
+                <p className="font-medium text-xs mt-1 leading-relaxed text-amber-800">
+                  {currentSelectedJob.accessInstructions}
+                </p>
+              </div>
+            )}
 
             {/* Property Manager Contact Details */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs space-y-1.5">

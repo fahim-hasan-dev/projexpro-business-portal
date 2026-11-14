@@ -30,6 +30,7 @@ export interface IProperty {
   name: string;
   address: string;
   unitSuiteNo?: string;
+  totalBuildings?: number;
   totalUnits?: number;
   floorRange?: string;
   status: PropertyStatus;

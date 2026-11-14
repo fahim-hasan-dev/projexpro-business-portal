@@ -37,25 +37,39 @@ export function middleware(request: NextRequest) {
   const isPaymentsRoute = pathname.startsWith('/payments');
   const isPublicRoute = isAuthRoute || isPaymentsRoute || pathname === '/unauthorized';
 
-  const hasToken = Boolean(token);
   const payload = token ? parseJwt(token) : null;
+  const isExpired = Boolean(payload?.exp && payload.exp * 1000 < Date.now());
+  const isValidToken = Boolean(token && !isExpired);
 
-  // If unauthenticated user tries to access protected routes, redirect to login
-  if (!hasToken && !isPublicRoute) {
+  // If unauthenticated or expired user tries to access protected routes, redirect to login & clear dead cookies
+  if (!isValidToken && !isPublicRoute) {
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    if (token) {
+      response.cookies.delete('projexpro_token');
+      response.cookies.delete('cat-admin-token');
+    }
+    return response;
   }
 
   // If authenticated user tries to access auth routes, redirect based on role
-  if (hasToken && isAuthRoute) {
+  if (isValidToken && isAuthRoute) {
     const isServiceProvider = payload?.role === 'service_provider';
     const targetUrl = isServiceProvider ? '/services_provider/overview' : '/';
     return NextResponse.redirect(new URL(targetUrl, request.url));
   }
 
+  // If expired token is present on auth route, delete dead cookies
+  if (isExpired && isAuthRoute) {
+    const response = NextResponse.next();
+    response.cookies.delete('projexpro_token');
+    response.cookies.delete('cat-admin-token');
+    return response;
+  }
+
   // Role-based route guard for authenticated users
-  if (hasToken && payload?.role) {
+  if (isValidToken && payload?.role) {
 
     const isServiceProvider = payload.role === 'service_provider';
 

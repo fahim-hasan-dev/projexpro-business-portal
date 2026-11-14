@@ -3,7 +3,7 @@
 import React from "react";
 import { Search } from "lucide-react";
 
-export type FilterTab = "All Invoices" | "Pending" | "Overdue" | "Paid";
+export type FilterTab = "All" | "Due" | "Awaiting Approval" | "Overdue" | "Paid";
 
 interface InvoiceFiltersProps {
   activeTab: FilterTab;
@@ -12,9 +12,11 @@ interface InvoiceFiltersProps {
   onSearchChange: (val: string) => void;
   counts: {
     all: number;
-    pending: number;
-    overdue: number;
-    paid: number;
+    due?: number;
+    awaitingApproval?: number;
+    overdue?: number;
+    paid?: number;
+    pending?: number;
   };
 }
 
@@ -26,8 +28,9 @@ export default function InvoiceFilters({
   counts,
 }: InvoiceFiltersProps) {
   const tabs: { key: FilterTab; label: string; count?: number }[] = [
-    { key: "All Invoices", label: "All Invoices" },
-    { key: "Pending", label: "Pending", count: counts.pending },
+    { key: "All", label: "All" },
+    { key: "Due", label: "Due", count: counts.due },
+    { key: "Awaiting Approval", label: "Awaiting Approval", count: counts.awaitingApproval ?? counts.pending },
     { key: "Overdue", label: "Overdue", count: counts.overdue },
     { key: "Paid", label: "Paid", count: counts.paid },
   ];
@@ -43,7 +46,7 @@ export default function InvoiceFilters({
               key={tab.key}
               type="button"
               onClick={() => onTabChange(tab.key)}
-              className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${isActive
+              className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${isActive
                 ? "bg-white text-gray-900 shadow-xs"
                 : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}

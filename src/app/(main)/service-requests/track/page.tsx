@@ -17,6 +17,8 @@ import {
   FileText,
   DollarSign,
   AlertTriangle,
+  Receipt,
+  Key,
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import React, { Suspense, useState } from "react";
@@ -280,6 +282,18 @@ function TrackContent() {
               {currentJob.requestNo}
             </span>
 
+            {currentJob.unit && (
+              <span className="bg-gray-100 text-gray-800 font-bold text-xs px-3 py-1 rounded-full border border-gray-200">
+                Unit: {currentJob.unit}
+              </span>
+            )}
+
+            {currentJob.serviceCategory && (
+              <span className="bg-purple-50 text-[#6B1294] font-bold text-xs px-3 py-1 rounded-full border border-purple-200">
+                {currentJob.serviceCategory}
+              </span>
+            )}
+
             <span
               className={`font-semibold text-xs px-3 py-1 rounded-full ${
                 currentJob.priority === "Urgent"
@@ -304,6 +318,19 @@ function TrackContent() {
               {currentJob.issueTitle}
             </h2>
             <p className="text-sm text-gray-600 mt-1 leading-relaxed">{currentJob.description}</p>
+            {currentJob.locationDetails && (
+              <p className="text-xs text-gray-500 mt-1">
+                <span className="font-semibold text-gray-700">Location:</span> {currentJob.locationDetails}
+              </p>
+            )}
+            {currentJob.accessInstructions && (
+              <div className="mt-3 bg-amber-50/90 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+                <span className="font-bold text-amber-700 uppercase tracking-wider text-[10px] flex items-center gap-1 mb-0.5">
+                  <Key className="w-3.5 h-3.5" /> Access Instructions
+                </span>
+                <p>{currentJob.accessInstructions}</p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 font-normal border-t border-gray-100 pt-3">
@@ -678,27 +705,26 @@ function TrackContent() {
           </div>
         </div>
       ) : currentJob.status === "Completed" ? (
-        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-purple-50/70 border border-purple-200/80 rounded-lg p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <DollarSign className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-full bg-purple-100 text-[#6B1294] flex items-center justify-center shrink-0">
+              <Receipt className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-sm text-emerald-950">Maintenance Work Completed</h4>
-              <p className="text-xs text-emerald-700 mt-0.5">
-                Generate the maintenance invoice and pay your assigned contractor securely via Stripe.
+              <h4 className="font-bold text-sm text-[#2E0054]">Maintenance Work Completed</h4>
+              <p className="text-xs text-purple-700 mt-0.5">
+                The invoice has been generated for this completed work order. Please visit the Invoices section to review and initiate payment.
               </p>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={() => handlePayInvoice()}
-            disabled={isPayingBySR}
-            className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-lg text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2 shadow-xs shrink-0"
+            onClick={() => router.push("/invoices")}
+            className="py-2.5 px-5 bg-[#6B1294] hover:bg-[#580e7d] text-white font-bold rounded-lg text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2 shadow-xs shrink-0"
           >
-            {isPayingBySR ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            <span>Pay Contractor (${currentJob.finalPayout || currentJob.basePayment || 0})</span>
+            <Receipt className="w-4 h-4" />
+            <span>Go to Invoices &rarr;</span>
           </button>
         </div>
       ) : null}

@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Play,
   Upload,
+  Key,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -614,9 +615,21 @@ export default function ServiceProviderOverview(): React.ReactElement {
                         </span>
                       </div>
 
-                      <h3 className="text-base font-bold text-gray-900 leading-tight truncate">
-                        {propertyName}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-bold text-gray-900 leading-tight">
+                          {propertyName}
+                        </h3>
+                        {req.unit && (
+                          <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-[11px] font-semibold border border-gray-200">
+                            Unit: {req.unit}
+                          </span>
+                        )}
+                        {req.serviceCategory && (
+                          <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-[11px] font-semibold border border-purple-200">
+                            {req.serviceCategory}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 font-normal">
                         <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -786,13 +799,23 @@ export default function ServiceProviderOverview(): React.ReactElement {
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusBadgeStyle(selectedJob.status)}`}>
                 {selectedJob.status}
               </span>
               <span className="text-xs font-bold text-red-600">
                 Priority: {selectedJob.priority}
               </span>
+              {selectedJob.unit && (
+                <span className="px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded-full border border-gray-200">
+                  Unit: {selectedJob.unit}
+                </span>
+              )}
+              {selectedJob.serviceCategory && (
+                <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-full border border-purple-200">
+                  {selectedJob.serviceCategory}
+                </span>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -816,6 +839,27 @@ export default function ServiceProviderOverview(): React.ReactElement {
                 {selectedJob.description || selectedJob.issueTitle}
               </p>
             </div>
+
+            {selectedJob.locationDetails && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3.5">
+                <span className="text-xs text-gray-400 font-normal block">Specific Location</span>
+                <p className="text-xs font-semibold text-gray-800 mt-1">
+                  {selectedJob.locationDetails}
+                </p>
+              </div>
+            )}
+
+            {selectedJob.accessInstructions && (
+              <div className="bg-amber-50/90 border border-amber-200 rounded-lg p-3.5 text-amber-900">
+                <span className="text-[10px] font-bold text-amber-700 uppercase flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5" />
+                  Access Instructions
+                </span>
+                <p className="text-xs font-medium text-amber-800 mt-1 leading-relaxed">
+                  {selectedJob.accessInstructions}
+                </p>
+              </div>
+            )}
 
             {selectedJob.rejectionReason && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3.5 text-xs text-red-800">

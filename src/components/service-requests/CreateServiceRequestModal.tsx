@@ -35,6 +35,9 @@ export default function CreateServiceRequestModal({
   const [formPropertyId, setFormPropertyId] = useState<string>("");
   const [formTitle, setFormTitle] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
+  const [formUnit, setFormUnit] = useState<string>("");
+  const [formServiceCategory, setFormServiceCategory] = useState<string>("");
+  const [formAccessInstructions, setFormAccessInstructions] = useState<string>("");
   const [formPriority, setFormPriority] = useState<PriorityType>("Medium");
   const [formIsOccupied, setFormIsOccupied] = useState<boolean>(false);
   const [formTenantName, setFormTenantName] = useState<string>("");
@@ -85,7 +88,13 @@ export default function CreateServiceRequestModal({
       newErrors.property = "Property selection is required";
     }
     if (!formTitle.trim()) {
-      newErrors.title = "Issue Title is required";
+      newErrors.title = "What's the issue is required";
+    }
+    if (!formUnit.trim()) {
+      newErrors.unit = "Unit is required";
+    }
+    if (!formServiceCategory.trim()) {
+      newErrors.serviceCategory = "Service Category is required";
     }
     if (!formDescription.trim()) {
       newErrors.description = "Description is required";
@@ -112,10 +121,13 @@ export default function CreateServiceRequestModal({
         issueTitle: formTitle.trim(),
         description: formDescription.trim(),
         priority: formPriority,
+        unit: formUnit.trim(),
+        serviceCategory: formServiceCategory.trim(),
+        accessInstructions: formAccessInstructions.trim() || undefined,
         isOccupied: formIsOccupied,
         tenantName: formIsOccupied ? formTenantName.trim() : undefined,
         tenantPhone: formIsOccupied ? formTenantPhone.trim() : undefined,
-        locationDetails: formExtraTitle.trim() || undefined,
+        locationDetails: formUnit.trim() ? `Unit: ${formUnit.trim()}${formExtraTitle.trim() ? ` - ${formExtraTitle.trim()}` : ""}` : formExtraTitle.trim() || undefined,
       };
 
       let bodyData: FormData | typeof payload;
@@ -135,6 +147,9 @@ export default function CreateServiceRequestModal({
       // Reset Form
       setFormTitle("");
       setFormDescription("");
+      setFormUnit("");
+      setFormServiceCategory("");
+      setFormAccessInstructions("");
       setFormPriority("Medium");
       setFormIsOccupied(false);
       setFormTenantName("");
@@ -160,10 +175,10 @@ export default function CreateServiceRequestModal({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Create Service Request
+              New Service Request
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 font-normal mt-0.5">
-              Submit a new maintenance request for your property.
+              Submit a new service request for your property.
             </p>
           </div>
           <button
@@ -218,10 +233,10 @@ export default function CreateServiceRequestModal({
             )}
           </div>
 
-          {/* Issue Title */}
+          {/* What's the issue? (Title) */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Issue Title *
+              What&apos;s the issue? *
             </label>
             <input
               type="text"
@@ -244,10 +259,85 @@ export default function CreateServiceRequestModal({
             )}
           </div>
 
-          {/* Description */}
+          {/* Unit: which unit has the problem */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Description *
+              Unit *
+            </label>
+            <input
+              type="text"
+              value={formUnit}
+              onChange={(e) => {
+                setFormUnit(e.target.value);
+                if (e.target.value.trim()) setErrors((prev) => ({ ...prev, unit: "" }));
+              }}
+              placeholder="e.g. Unit 4B, Apt 12 - which unit has the problem"
+              className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                errors.unit
+                  ? "border-red-500 bg-red-50/20"
+                  : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+              }`}
+            />
+            {errors.unit && (
+              <p className="text-red-500 text-xs mt-1 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {errors.unit}
+              </p>
+            )}
+          </div>
+
+          {/* Service Category */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+              Service Category *
+            </label>
+            <Select
+              value={formServiceCategory || undefined}
+              onValueChange={(val) => {
+                setFormServiceCategory(val);
+                setErrors((prev) => ({ ...prev, serviceCategory: "" }));
+              }}
+            >
+              <SelectTrigger
+                className={`w-full h-[46px] px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 focus:outline-none transition-all cursor-pointer shadow-none ${
+                  errors.serviceCategory
+                    ? "border-red-500 bg-red-50/20"
+                    : "border-gray-300 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20"
+                }`}
+              >
+                <SelectValue placeholder="Select Service Category (e.g. Plumbing, Electrical, HVAC...)" />
+              </SelectTrigger>
+              <SelectContent className="bg-white rounded-lg border border-gray-200 shadow-lg z-[60]">
+                {[
+                  "Plumbing",
+                  "Electrical",
+                  "HVAC / Heating & Cooling",
+                  "Roofing & Gutters",
+                  "Painting & Drywall",
+                  "Carpentry & Flooring",
+                  "Appliance Repair",
+                  "Pest Control",
+                  "General Maintenance & Handyman",
+                  "Locksmith & Security",
+                  "Landscaping & Grounds",
+                  "Other Specialty",
+                ].map((cat) => (
+                  <SelectItem key={cat} value={cat} className="py-2.5 cursor-pointer">
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.serviceCategory && (
+              <p className="text-red-500 text-xs mt-1 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {errors.serviceCategory}
+              </p>
+            )}
+          </div>
+
+          {/* Tell us more (Description) */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+              Tell us more *
             </label>
             <textarea
               rows={3}
@@ -256,7 +346,7 @@ export default function CreateServiceRequestModal({
                 setFormDescription(e.target.value);
                 if (e.target.value.trim()) setErrors((prev) => ({ ...prev, description: "" }));
               }}
-              placeholder="Detailed description of the issue..."
+              placeholder="Include when the issue started, what room."
               className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all resize-none ${
                 errors.description
                   ? "border-red-500 bg-red-50/20"
@@ -268,6 +358,20 @@ export default function CreateServiceRequestModal({
                 <span>⚠️</span> {errors.description}
               </p>
             )}
+          </div>
+
+          {/* Access Instructions */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+              Access Instructions
+            </label>
+            <input
+              type="text"
+              value={formAccessInstructions}
+              onChange={(e) => setFormAccessInstructions(e.target.value)}
+              placeholder="gate codes, pets, or permission to enter"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#6B1294] focus:ring-2 focus:ring-[#6B1294]/20 focus:outline-none transition-all"
+            />
           </div>
 
           {/* Priority Level Pills */}
@@ -296,7 +400,7 @@ export default function CreateServiceRequestModal({
           {/* Occupied Toggle */}
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Is unit / property occupied? *
+              Unit / property occupied? *
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -304,7 +408,7 @@ export default function CreateServiceRequestModal({
                 onClick={() => setFormIsOccupied(true)}
                 className={`py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center cursor-pointer transition-all ${
                   formIsOccupied
-                    ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-800"
+                    ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-800 font-bold shadow-xs"
                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
@@ -315,7 +419,7 @@ export default function CreateServiceRequestModal({
                 onClick={() => setFormIsOccupied(false)}
                 className={`py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center cursor-pointer transition-all ${
                   !formIsOccupied
-                    ? "border-2 border-red-300 bg-red-100 text-red-700"
+                    ? "border-2 border-amber-400 bg-amber-100 text-amber-800 font-bold shadow-xs"
                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
