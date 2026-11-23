@@ -4,10 +4,12 @@ export function POST() {
   const response = NextResponse.json({ success: true });
   response.cookies.set('projexpro_token', '', {
     expires: new Date(0),
+    maxAge: 0,
     path: '/',
   });
   response.cookies.set('cat-admin-token', '', {
     expires: new Date(0),
+    maxAge: 0,
     path: '/',
   });
   return response;

@@ -3,6 +3,7 @@
 import React from "react";
 import { ExternalLink } from "lucide-react";
 import { ServiceRequest, StatusType } from "@/types/serviceRequest";
+import { ServiceRequestStatusBadge } from "@/utils/statusStyles";
 
 interface ServiceRequestTableProps {
   requests: ServiceRequest[];
@@ -95,21 +96,7 @@ export default function ServiceRequestTable({
 
               {/* 5. STATUS */}
               <td className="py-4 px-5 whitespace-nowrap">
-                <span
-                  className={`font-semibold text-xs px-3 py-1 rounded-full ${
-                    req.status === "In Progress"
-                      ? "bg-purple-100 text-purple-700"
-                      : req.status === "Assigned"
-                      ? "bg-blue-100 text-blue-700"
-                      : req.status === "Completed"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : req.status === "Pending"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {req.status}
-                </span>
+                <ServiceRequestStatusBadge status={req.status} />
               </td>
 
               {/* 6. ASSIGNED TO */}

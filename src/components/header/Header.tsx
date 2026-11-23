@@ -10,30 +10,45 @@ import { removeToken } from "../../utils/storage";
 import { logout } from "../../features/auth/authSlice";
 import { baseApi } from "../../utils/apiBaseQuery";
 import { useMyProfileQuery } from "../../features/profile/profileApi";
+import { useGetUnreadNotificationCountQuery } from "../../features/notification/notificationApi";
 import { getPropertyImageUrl } from "../../utils/propertyUtils";
 
 export default function Header() {
-  const { data: profileRes } = useMyProfileQuery(undefined);
-  const user = profileRes?.data;
-
-  const firstName = user?.firstName || "";
-  const lastName = user?.lastName || "";
-  const userName = firstName || lastName ? `${firstName} ${lastName}`.trim() : (user?.userName || "Property Manager");
-  const userInitials = (
-    (firstName?.[0] || "") + (lastName?.[0] || (firstName?.[1] || ""))
-  ).toUpperCase() || "PM";
-  const userAvatar = user?.image ? getPropertyImageUrl(user.image) : "";
-  const notificationCount = 0;
-
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useDispatch();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { data: profileRes } = useMyProfileQuery(undefined);
+  const user = profileRes?.data;
 
   const isServiceProvider = pathname?.startsWith("/services_provider") || user?.role === "service_provider";
-  const userRole = isServiceProvider ? "Service Provider" : "Property Manager";
+  const userRole = isServiceProvider
+    ? "Service Provider"
+    : user?.role === "super_admin"
+      ? "Super Admin"
+      : user?.role === "admin"
+        ? "Admin"
+        : (user?.role ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) : "Property Manager");
+
+  const firstName = user?.firstName || "";
+  const lastName = user?.lastName || "";
+  const userName = firstName || lastName
+    ? `${firstName} ${lastName}`.trim()
+    : (user?.userName || user?.email?.split("@")[0] || (isServiceProvider ? "Service Provider" : "Property Manager"));
+
+  const userInitials = (
+    (firstName?.[0] || "") + (lastName?.[0] || (firstName?.[1] || ""))
+  ).toUpperCase() || (user?.userName ? user.userName.slice(0, 2).toUpperCase() : (isServiceProvider ? "SP" : "PM"));
+
+  const userAvatar = user?.image ? getPropertyImageUrl(user.image) : "";
+
+  const { data: unreadData } = useGetUnreadNotificationCountQuery(undefined, {
+    pollingInterval: 30000,
+  });
+  const notificationCount = typeof unreadData?.data === "number" ? unreadData.data : 0;
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -2,14 +2,15 @@ const TOKEN_COOKIE_NAME = "projexpro_token";
 const LEGACY_COOKIE_NAME = "cat-admin-token";
 const LOCAL_STORAGE_KEY = "projexpro_token";
 const LEGACY_STORAGE_KEY = "catAdmin";
-const COOKIE_MAX_AGE = 5 * 24 * 60 * 60; // 5 days (matches backend JWT expiration)
 
+// Token expiration is strictly controlled by backend JWT.
+// No client-side max-age or expiration is set.
 export const saveToken = (token) => {
   if (typeof window !== "undefined" && token) {
     localStorage.setItem(LOCAL_STORAGE_KEY, token);
     localStorage.setItem(LEGACY_STORAGE_KEY, token);
-    document.cookie = `${TOKEN_COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
-    document.cookie = `${LEGACY_COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+    document.cookie = `${TOKEN_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
+    document.cookie = `${LEGACY_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
   }
 };
 
@@ -18,9 +19,9 @@ export const getToken = () => {
     const localToken = localStorage.getItem(LOCAL_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     if (localToken) return localToken;
     const match =
-      document.cookie.match(new RegExp(`(^| )${TOKEN_COOKIE_NAME}=([^;]+)`)) ||
-      document.cookie.match(new RegExp(`(^| )${LEGACY_COOKIE_NAME}=([^;]+)`));
-    if (match) return match[2];
+      document.cookie.match(new RegExp(`(?:^|;\\s*)${TOKEN_COOKIE_NAME}=([^;]+)`)) ||
+      document.cookie.match(new RegExp(`(?:^|;\\s*)${LEGACY_COOKIE_NAME}=([^;]+)`));
+    if (match) return decodeURIComponent(match[1]);
   }
   return null;
 };
@@ -30,8 +31,15 @@ export const removeToken = () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
     localStorage.removeItem("adminLoginId");
-    document.cookie = `${TOKEN_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
-    document.cookie = `${LEGACY_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+
+    // Force expiration with both expires in the past and max-age=0
+    document.cookie = `${TOKEN_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax`;
+    document.cookie = `${LEGACY_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax`;
+
+    try {
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    } catch {
+      // no-op
+    }
   }
 };
-

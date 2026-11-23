@@ -6,21 +6,24 @@ import React from "react";
 export default function AuthHeroSide() {
   return (
     <div className="hidden lg:flex lg:w-1/2 sticky top-0 h-screen flex-shrink-0 relative flex-col justify-end p-12 lg:p-16 xl:p-20 overflow-hidden bg-[#1F0B43]">
-      {/* Background Image - Left aligned to match reference design framing */}
+      {/* Background Image - Centered on modern architectural buildings & patio */}
       <Image
         src="/images/onbording.jpg"
         alt="Property Operations"
         fill
-        className="object-cover object-left"
+        sizes="(min-width: 1024px) 50vw, 100vw"
+        className="object-cover"
+        style={{ objectPosition: "65% center" }}
         priority
+        quality={90}
       />
 
-      {/* Deep Purple Gradient Overlay matching reference image exactly */}
+      {/* Deep Purple Gradient Overlay balancing vivid architectural view and crisp text contrast */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(180deg, rgba(31, 11, 67, 0.15) 0%, rgba(31, 11, 67, 0.25) 25%, rgba(31, 11, 67, 0.52) 48%, rgba(31, 11, 67, 0.80) 72%, rgba(29, 9, 63, 0.94) 88%, #1F0B43 100%)",
+            "linear-gradient(180deg, rgba(31, 11, 67, 0.05) 0%, rgba(31, 11, 67, 0.15) 30%, rgba(31, 11, 67, 0.48) 58%, rgba(31, 11, 67, 0.80) 76%, rgba(29, 9, 63, 0.95) 90%, #1F0B43 100%)",
         }}
       />
 

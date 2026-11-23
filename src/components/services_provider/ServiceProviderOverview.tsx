@@ -32,6 +32,7 @@ import {
 } from "@/features/serviceRequest/serviceRequestApi";
 import { useMyProfileQuery } from "@/features/profile/profileApi";
 import { IServiceRequest } from "@/types/serviceRequest";
+import { getStatusBadgeStyle, ServiceRequestStatusBadge } from "@/utils/statusStyles";
 
 export default function ServiceProviderOverview(): React.ReactElement {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -266,26 +267,6 @@ export default function ServiceProviderOverview(): React.ReactElement {
     if (typeof u === "string") return "Property Manager";
     const name = `${u.firstName || ""} ${u.lastName || ""}`.trim();
     return name || u.userName || u.email || "Property Manager";
-  };
-
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case "Assigned":
-        return "bg-amber-100 text-amber-800 border border-amber-200/80";
-      case "Accepted":
-        return "bg-blue-100 text-blue-800 border border-blue-200/80";
-      case "In Progress":
-        return "bg-indigo-100 text-indigo-800 border border-indigo-200/80";
-      case "Pending Approval":
-        return "bg-purple-100 text-[#6B1294] border border-purple-200/80";
-      case "Completed":
-        return "bg-emerald-100 text-emerald-800 border border-emerald-200/80";
-      case "Rejected":
-      case "Declined":
-        return "bg-red-100 text-red-800 border border-red-200/80";
-      default:
-        return "bg-gray-100 text-gray-800 border border-gray-200/80";
-    }
   };
 
   return (

@@ -34,6 +34,9 @@ const isTokenExpiredOrUnauthorized = (result) => {
     message.includes('token has expired') ||
     message.includes('token expired') ||
     message.includes('jwt expired') ||
+    message.includes('invalid access token') ||
+    message.includes('invalid token') ||
+    message.includes('token not found') ||
     message.includes('unauthorized')
   );
 };
@@ -48,7 +51,8 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 
     if (typeof window !== "undefined") {
       const currentPath = window.location.pathname;
-      if (!currentPath.startsWith("/auth")) {
+      if (!currentPath.startsWith("/auth") && !window.__isLoggingOut) {
+        window.__isLoggingOut = true;
         const message = result?.error?.data?.message || "Session expired. Please log in again.";
         toast.error(message, { id: "auth-session-expired" });
         window.location.href = `/auth/login?from=${encodeURIComponent(currentPath)}`;
@@ -64,6 +68,6 @@ export const baseApi = createApi({
   reducerPath: "baseApi",
   baseQuery: baseQueryWithReauth,
   endpoints: () => ({}),
-  tagTypes: ["Auth", "Profile", "Plan", "Subscription", "Property", "Category", "ServiceRequest", "Invoice", "Payment"],
+  tagTypes: ["Auth", "Profile", "Plan", "Subscription", "Property", "Category", "ServiceRequest", "Invoice", "Payment", "Notification"],
 });
 

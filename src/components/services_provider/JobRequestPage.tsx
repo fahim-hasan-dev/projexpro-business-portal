@@ -40,6 +40,7 @@ import {
 import { IServiceRequest } from "@/types/serviceRequest";
 import { baseURL } from "@/utils/BaseURL";
 import DeclineJobModal from "./DeclineJobModal";
+import { ServiceRequestStatusBadge } from "@/utils/statusStyles";
 
 export default function JobRequestPage(): React.ReactElement {
   const [searchTerm, setSearchTerm] = useState("");
@@ -229,57 +230,7 @@ export default function JobRequestPage(): React.ReactElement {
 
   // Helper for Status Badge
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Assigned":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-            Pending Acceptance
-          </span>
-        );
-      case "Accepted":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
-            Accepted
-          </span>
-        );
-      case "In Progress":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
-            In Progress
-          </span>
-        );
-      case "Pending Approval":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-[#6B1294] border border-purple-200">
-            Awaiting Approval
-          </span>
-        );
-      case "Completed":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-            Completed
-          </span>
-        );
-      case "Rejected":
-      case "Declined":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
-            Declined
-          </span>
-        );
-      case "Cancelled":
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-            Cancelled
-          </span>
-        );
-      default:
-        return (
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-            {status}
-          </span>
-        );
-    }
+    return <ServiceRequestStatusBadge status={status} />;
   };
 
   const getPropertyName = (property: any) => {

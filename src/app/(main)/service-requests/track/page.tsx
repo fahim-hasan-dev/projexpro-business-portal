@@ -32,6 +32,7 @@ import {
   usePayInvoiceByServiceRequestMutation,
 } from "@/features/invoice/invoiceApi";
 import { getPropertyImageUrl } from "@/utils/propertyUtils";
+import { ServiceRequestStatusBadge } from "@/utils/statusStyles";
 
 function TrackContent() {
   const router = useRouter();
@@ -243,21 +244,12 @@ function TrackContent() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <span
-            className={`px-3.5 py-1.5 font-bold text-xs rounded-full border ${
-              currentJob.status === "Completed"
-                ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                : currentJob.status === "In Progress" || currentJob.status === "Accepted"
-                ? "bg-purple-100 text-[#6B1294] border-purple-200"
-                : currentJob.status === "Assigned"
-                ? "bg-blue-100 text-blue-800 border-blue-200"
-                : currentJob.status === "Cancelled" || currentJob.status === "Rejected"
-                ? "bg-red-100 text-red-800 border-red-200"
-                : "bg-amber-100 text-amber-800 border-amber-200"
-            }`}
-          >
-            Status: {currentJob.status}
-          </span>
+          <ServiceRequestStatusBadge
+            status={currentJob.status}
+            showIcon
+            customLabel={`Status: ${currentJob.status}`}
+            className="px-3.5 py-1.5 font-bold text-xs"
+          />
 
           {/* Cancel button if pending or assigned */}
           {(currentJob.status === "Pending" || currentJob.status === "Assigned") && (
